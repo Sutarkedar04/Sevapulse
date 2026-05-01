@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 
 class CanteenMenuScreen extends StatelessWidget {
   const CanteenMenuScreen({Key? key}) : super(key: key);
@@ -45,6 +46,7 @@ class CanteenMenuScreen extends StatelessWidget {
     ];
 
     return Scaffold(
+      backgroundColor: context.backgroundColor,
       appBar: AppBar(
         title: const Text('Canteen Menu'),
         backgroundColor: const Color(0xFFe67e22),
@@ -68,6 +70,7 @@ class CanteenMenuScreen extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
+      color: context.cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -75,26 +78,26 @@ class CanteenMenuScreen extends StatelessWidget {
           children: [
             Text(
               category['category'],
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFe67e22),
+                color: const Color(0xFFe67e22),
               ),
             ),
             const SizedBox(height: 12),
-            ...(category['items'] as List).map((item) => _buildMenuItem(item)),
+            ...(category['items'] as List).map((item) => _buildMenuItem(item, context)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMenuItem(Map<String, dynamic> item) {
+  Widget _buildMenuItem(Map<String, dynamic> item, BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFecf0f1)),
+        border: Border.all(color: context.secondaryText.withOpacity(0.2)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -105,17 +108,17 @@ class CanteenMenuScreen extends StatelessWidget {
               children: [
                 Text(
                   item['name'],
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2c3e50),
+                    color: context.primaryText,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   item['description'],
-                  style: const TextStyle(
-                    color: Color(0xFF7f8c8d),
+                  style: TextStyle(
+                    color: context.secondaryText,
                     fontSize: 14,
                   ),
                 ),
@@ -125,7 +128,7 @@ class CanteenMenuScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFe67e22).withValues(alpha: 0.1),
+              color: const Color(0xFFe67e22).withOpacity(0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(

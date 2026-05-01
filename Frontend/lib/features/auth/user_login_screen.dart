@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 import '../../data/providers/auth_provider.dart';
 import '../../features/user/screens/user_home_screen.dart';
 import 'user_register_screen.dart';
@@ -23,12 +24,10 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
   @override
   void initState() {
     super.initState();
-    _clearInvalidToken(); // Clear any invalid token on startup
+    _clearInvalidToken();
     _loadSavedCredentials();
   }
-  
 
-  // Clear any invalid token that might be stored
   Future<void> _clearInvalidToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -67,7 +66,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         _isLoggingIn = true;
       });
       
-      // Clear any existing token before login to ensure fresh authentication
       await _clearInvalidToken();
       
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -79,7 +77,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
       );
 
       if (success && mounted) {
-        // Save credentials if remember me is checked
         if (_rememberMe) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('saved_email', _emailController.text.trim());
@@ -94,10 +91,10 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Login successful!'),
-              backgroundColor: Color(0xFF3498db),
-              duration: Duration(seconds: 2),
+            SnackBar(
+              content: const Text('Login successful!'),
+              backgroundColor: context.primaryColor,
+              duration: const Duration(seconds: 2),
             ),
           );
           
@@ -140,7 +137,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -150,7 +147,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2c3e50)),
+                  icon: Icon(Icons.arrow_back, color: context.primaryText),
                   onPressed: () => Navigator.pop(context),
                 ),
                 const SizedBox(height: 20),
@@ -189,14 +186,14 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Welcome Back!',
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF2c3e50)),
+          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: context.primaryText),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Sign in to continue your health journey',
-          style: TextStyle(fontSize: 16, color: Color(0xFF7f8c8d)),
+          style: TextStyle(fontSize: 16, color: context.secondaryText),
         ),
       ],
     );
@@ -207,21 +204,22 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
       children: [
         TextFormField(
           controller: _emailController,
+          style: TextStyle(color: context.primaryText),
           decoration: InputDecoration(
             labelText: 'Email Address',
-            labelStyle: const TextStyle(color: Color(0xFF7f8c8d)),
-            prefixIcon: const Icon(Icons.email, color: Color(0xFF3498db)),
+            labelStyle: TextStyle(color: context.secondaryText),
+            prefixIcon: Icon(Icons.email, color: context.primaryColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFecf0f1)),
+              borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF3498db), width: 2),
+              borderSide: BorderSide(color: context.primaryColor, width: 2),
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.surfaceColor,
           ),
           keyboardType: TextInputType.emailAddress,
           validator: (value) {
@@ -233,23 +231,24 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         const SizedBox(height: 20),
         TextFormField(
           controller: _passwordController,
+          style: TextStyle(color: context.primaryText),
           decoration: InputDecoration(
             labelText: 'Password',
-            labelStyle: const TextStyle(color: Color(0xFF7f8c8d)),
-            prefixIcon: const Icon(Icons.lock, color: Color(0xFF3498db)),
+            labelStyle: TextStyle(color: context.secondaryText),
+            prefixIcon: Icon(Icons.lock, color: context.primaryColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFecf0f1)),
+              borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF3498db), width: 2),
+              borderSide: BorderSide(color: context.primaryColor, width: 2),
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.surfaceColor,
             suffixIcon: IconButton(
-              icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off, color: const Color(0xFF7f8c8d)),
+              icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off, color: context.secondaryText),
               onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
             ),
           ),
@@ -269,9 +268,9 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                 Checkbox(
                   value: _rememberMe,
                   onChanged: (value) => setState(() => _rememberMe = value ?? false),
-                  activeColor: const Color(0xFF3498db),
+                  activeColor: context.primaryColor,
                 ),
-                const Text('Remember me', style: TextStyle(color: Color(0xFF2c3e50))),
+                Text('Remember me', style: TextStyle(color: context.primaryText)),
               ],
             ),
             const SizedBox(width: 100),
@@ -287,7 +286,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
       child: ElevatedButton(
         onPressed: _isLoggingIn ? null : _login,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF3498db),
+          backgroundColor: context.primaryColor,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -304,12 +303,12 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: Divider(color: Colors.grey[300])),
+            Expanded(child: Divider(color: context.secondaryText.withOpacity(0.3))),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Or continue with', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+              child: Text('Or continue with', style: TextStyle(color: context.secondaryText, fontSize: 14)),
             ),
-            Expanded(child: Divider(color: Colors.grey[300])),
+            Expanded(child: Divider(color: context.secondaryText.withOpacity(0.3))),
           ],
         ),
         const SizedBox(height: 20),
@@ -333,11 +332,11 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text("Don't have an account?", style: TextStyle(color: Color(0xFF7f8c8d))),
+            Text("Don't have an account?", style: TextStyle(color: context.secondaryText)),
             const SizedBox(width: 4),
             TextButton(
               onPressed: _navigateToRegister,
-              child: const Text('Sign up', style: TextStyle(color: Color(0xFF3498db), fontWeight: FontWeight.w600)),
+              child: Text('Sign up', style: TextStyle(color: context.primaryColor, fontWeight: FontWeight.w600)),
             ),
           ],
         ),

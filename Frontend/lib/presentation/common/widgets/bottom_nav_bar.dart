@@ -1,5 +1,6 @@
 // lib/shared/widgets/bottom_nav_bar.dart
 import 'package:flutter/material.dart';
+import 'package:seva_pulse/core/theme/theme_extensions.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -33,38 +34,20 @@ class BottomNavBar extends StatelessWidget {
         child: BottomNavigationBar(
           currentIndex: currentIndex,
           onTap: onTap,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: const Color(0xFF3498db),
-          unselectedItemColor: const Color(0xFF7f8c8d),
-          backgroundColor: Colors.white,
+          type: BottomNavigationBarType.fixed, // This allows more than 3 items
+          selectedItemColor: context.primaryColor,
+          unselectedItemColor: context.secondaryText.withOpacity(0.5),
+          backgroundColor: context.surfaceColor,
           selectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: 12,
+            fontSize: 11,
           ),
           unselectedLabelStyle: const TextStyle(
-            fontSize: 12,
+            fontSize: 11,
           ),
-          items: items.asMap().entries.map((entry) {
-            final index = entry.key;
-            final item = entry.value;
-            
+          items: items.map((item) {
             return BottomNavigationBarItem(
-              icon: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: currentIndex == index 
-                      ? const Color(0xFF3498db).withOpacity(0.1)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  item['icon'],
-                  color: currentIndex == index 
-                      ? const Color(0xFF3498db)
-                      : const Color(0xFF7f8c8d),
-                ),
-              ),
+              icon: Icon(item['icon']),
               label: item['label'],
             );
           }).toList(),

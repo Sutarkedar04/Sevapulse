@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 
 class AppScaffold extends StatelessWidget {
   final String title;
@@ -15,10 +16,11 @@ class AppScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: context.backgroundColor,
       appBar: showAppBar
           ? AppBar(
               title: Text(title),
-              backgroundColor: const Color(0xFF3498db),
+              backgroundColor: context.primaryColor,
               foregroundColor: Colors.white,
             )
           : null,

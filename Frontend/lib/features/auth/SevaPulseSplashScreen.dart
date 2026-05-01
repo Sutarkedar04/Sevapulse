@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'user_selection_screen.dart';
 import '../../data/providers/auth_provider.dart';
+import '../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 import '../user/screens/user_home_screen.dart';
 import '../doctor/screens/doctor_home_screen.dart';
 
@@ -13,7 +14,7 @@ class SevaPulseSplashScreen extends StatefulWidget {
   State<SevaPulseSplashScreen> createState() => _SevaPulseSplashScreenState();
 }
 
-class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen> 
+class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
     with SingleTickerProviderStateMixin {
   late PageController _pageController;
   late AnimationController _animationController;
@@ -22,12 +23,13 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
   late Animation<double> _scaleAnimation;
   int _currentPage = 0;
   bool _isCheckingAuth = true;
-  
+
   final List<Map<String, dynamic>> _splashScreens = [
     {
       'title': 'SEVA PULSE',
       'subtitle': 'Health Access',
-      'description': 'Find clinics and hospitals in your city with available transportation options',
+      'description':
+          'Find clinics and hospitals in your city with available transportation options',
       'color': const Color(0xFF3498db),
       'buttonText': 'Next',
       'imageType': 'logo',
@@ -35,7 +37,8 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
     {
       'title': 'SEVA PULSE',
       'subtitle': 'Queue Management',
-      'description': 'Skip the waiting line by registering for online queue at clinics and hospitals',
+      'description':
+          'Skip the waiting line by registering for online queue at clinics and hospitals',
       'color': const Color(0xFF2ecc71),
       'buttonText': 'Next',
       'imageType': 'svg',
@@ -44,7 +47,8 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
     {
       'title': 'SEVA PULSE',
       'subtitle': 'Wellness Guide',
-      'description': 'Get health tips and knowledge to stay fit and maintain a healthy lifestyle',
+      'description':
+          'Get health tips and knowledge to stay fit and maintain a healthy lifestyle',
       'color': const Color(0xFFe74c3c),
       'buttonText': 'Get Started',
       'imageType': 'svg',
@@ -55,14 +59,14 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
   @override
   void initState() {
     super.initState();
-    
+
     _pageController = PageController();
-    
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -70,7 +74,7 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
+
     _slideAnimation = Tween<double>(
       begin: 50.0,
       end: 0.0,
@@ -86,41 +90,36 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
       parent: _animationController,
       curve: Curves.elasticOut,
     ));
-    
+
     _animationController.forward();
-    
-    // ✅ CHECK IF USER IS ALREADY LOGGED IN
+
     _checkAuthAndNavigate();
   }
-  
-  // ✅ Add this method to check authentication
+
   Future<void> _checkAuthAndNavigate() async {
-    // Wait a moment for animations to look nice
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     if (!mounted) return;
-    
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     print('🔐 SplashScreen - Checking auth, isInitializing: ${authProvider.isInitializing}');
     print('🔐 SplashScreen - isAuthenticated: ${authProvider.isAuthenticated}');
-    
-    // Wait for auth provider to finish initializing
+
     if (authProvider.isInitializing) {
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
       _checkAuthAndNavigate();
       return;
     }
-    
+
     setState(() {
       _isCheckingAuth = false;
     });
-    
-    // If already authenticated, navigate directly to home
+
     if (authProvider.isAuthenticated) {
       print('✅ User already logged in: ${authProvider.user?.name}');
-      
+
       if (authProvider.isDoctor) {
         Navigator.pushReplacement(
           context,
@@ -151,11 +150,9 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
   }
 
   void _navigateToNext() {
-    // ✅ Check auth again before navigating
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     if (authProvider.isAuthenticated) {
-      // Already logged in, go to home
       if (authProvider.isDoctor) {
         Navigator.pushReplacement(
           context,
@@ -169,7 +166,7 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
       }
       return;
     }
-    
+
     if (_currentPage < _splashScreens.length - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 500),
@@ -183,18 +180,18 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
     }
   }
 
-  Widget _buildImageContainer(Map<String, dynamic> screenData) {
+  Widget _buildImageContainer(Map<String, dynamic> screenData, double imageSize) {
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
         return Transform.scale(
           scale: _scaleAnimation.value,
           child: Container(
-            width: 250,
-            height: 250,
+            width: imageSize,
+            height: imageSize,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.surfaceColor,
               borderRadius: BorderRadius.circular(25),
               boxShadow: [
                 BoxShadow(
@@ -212,6 +209,9 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
                 ? SvgPicture.asset(
                     screenData['svgPath'],
                     fit: BoxFit.contain,
+                    colorFilter: context.isDark
+                        ? const ColorFilter.mode(Colors.white70, BlendMode.srcIn)
+                        : null,
                   )
                 : Image.asset(
                     'assets/images/logo/kstarlogo.png',
@@ -224,84 +224,92 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
   }
 
   Widget _buildSplashContent(Map<String, dynamic> screenData) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildImageContainer(screenData),
-          
-          const SizedBox(height: 40),
-          
-          FadeTransition(
-            opacity: _fadeAnimation,
-            child: Text(
-              screenData['title'],
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF2c3e50),
-                letterSpacing: 1.2,
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          AnimatedBuilder(
-            animation: _animationController,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(_slideAnimation.value, 0),
-                child: Text(
-                  screenData['subtitle'],
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    color: screenData['color'],
-                    letterSpacing: 1.1,
-                  ),
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenHeight < 700;
+    final imageSize = isSmallScreen ? 180.0 : 250.0;
+    final verticalSpacingLarge = isSmallScreen ? 20.0 : 40.0;
+    final verticalSpacingMedium = isSmallScreen ? 12.0 : 16.0;
+    final verticalSpacingSmall = isSmallScreen ? 16.0 : 30.0;
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildImageContainer(screenData, imageSize),
+
+            SizedBox(height: verticalSpacingLarge),
+
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: Text(
+                screenData['title'],
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: context.primaryText,
+                  letterSpacing: 1.2,
                 ),
-              );
-            },
-          ),
-          
-          const SizedBox(height: 30),
-          
-          Container(
-            width: 80,
-            height: 4,
-            decoration: BoxDecoration(
-              color: screenData['color'],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          
-          const SizedBox(height: 30),
-          
-          FadeTransition(
-            opacity: _fadeAnimation,
-            child: Text(
-              screenData['description'],
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFF7f8c8d),
-                height: 1.6,
               ),
             ),
-          ),
-        ],
+
+            SizedBox(height: verticalSpacingMedium),
+
+            AnimatedBuilder(
+              animation: _animationController,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(_slideAnimation.value, 0),
+                  child: Text(
+                    screenData['subtitle'],
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: screenData['color'],
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            SizedBox(height: verticalSpacingSmall),
+
+            Container(
+              width: 80,
+              height: 4,
+              decoration: BoxDecoration(
+                color: screenData['color'],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            SizedBox(height: verticalSpacingSmall),
+
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: Text(
+                screenData['description'],
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: context.secondaryText,
+                  height: 1.6,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show loading while checking auth
     if (_isCheckingAuth) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: context.surfaceColor,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -324,26 +332,26 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'SEVA PULSE',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2c3e50),
+                  color: context.primaryText,
                 ),
               ),
               const SizedBox(height: 10),
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3498db)),
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(context.primaryColor),
               ),
             ],
           ),
         ),
       );
     }
-    
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.backgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -356,7 +364,8 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
                     onPressed: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (context) => const UserSelectionScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const UserSelectionScreen()),
                       );
                     },
                     child: Text(
@@ -370,7 +379,7 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
                   ),
                 ),
               ),
-            
+
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
@@ -381,7 +390,7 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
                 },
               ),
             ),
-            
+
             Container(
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: Row(
@@ -395,15 +404,15 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
                     height: 8,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(4),
-                      color: _currentPage == index 
+                      color: _currentPage == index
                           ? _splashScreens[index]['color']
-                          : Colors.grey.shade300,
+                          : context.secondaryText.withOpacity(0.3),
                     ),
                   ),
                 ),
               ),
             ),
-            
+
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: AnimatedBuilder(
@@ -422,7 +431,8 @@ class _SevaPulseSplashScreenState extends State<SevaPulseSplashScreen>
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 3,
-                          shadowColor: _splashScreens[_currentPage]['color'].withOpacity(0.3),
+                          shadowColor: _splashScreens[_currentPage]['color']
+                              .withOpacity(0.3),
                         ),
                         child: Text(
                           _splashScreens[_currentPage]['buttonText'],

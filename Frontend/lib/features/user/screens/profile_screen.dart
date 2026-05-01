@@ -1,3 +1,4 @@
+// lib/features/user/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/auth_provider.dart';
@@ -5,6 +6,7 @@ import '../../../core/services/patient_service.dart';
 import '../../../core/constants/api_constants.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../../../presentation/common/widgets/settings_section.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -24,7 +26,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'dateOfBirth': 'Not set',
       'gender': 'Not set',
       'bloodType': 'Not set',
-      'address': 'Not set',
+      'address': {
+        'street': '',
+        'city': '',
+        'state': '',
+        'zipCode': '',
+      },
+    },
+    'emergencyContact': {
+      'name': '',
+      'relationship': '',
+      'phone': '',
     },
     'medicalInfo': {
       'allergies': 'No allergies recorded',
@@ -36,6 +48,103 @@ class _ProfileScreenState extends State<ProfileScreen> {
   };
 
   final PatientService _patientService = PatientService();
+
+  // Dropdown options
+  final List<String> _genderOptions = ['Male', 'Female', 'Other', 'Not set'];
+  final List<String> _bloodTypeOptions = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'Not set'];
+  final List<String> _relationshipOptions = ['Spouse', 'Parent', 'Child', 'Sibling', 'Friend', 'Other', 'Not set'];
+  
+  // Medical dropdown options
+  final List<String> _allergiesOptions = [
+    'No allergies recorded',
+    'Pollen',
+    'Dust',
+    'Peanuts',
+    'Tree nuts',
+    'Shellfish',
+    'Dairy',
+    'Eggs',
+    'Soy',
+    'Wheat',
+    'Latex',
+    'Penicillin',
+    'Sulfa drugs',
+    'NSAIDs',
+    'Insect stings',
+    'Other'
+  ];
+  
+  final List<String> _medicalConditionsOptions = [
+    'No conditions recorded',
+    'Hypertension',
+    'Diabetes Type 1',
+    'Diabetes Type 2',
+    'Asthma',
+    'COPD',
+    'Arthritis',
+    'Osteoarthritis',
+    'Rheumatoid Arthritis',
+    'Heart Disease',
+    'Coronary Artery Disease',
+    'Heart Failure',
+    'Kidney Disease',
+    'Chronic Kidney Disease',
+    'Thyroid Disorder',
+    'Hypothyroidism',
+    'Hyperthyroidism',
+    'Anemia',
+    'Migraine',
+    'Depression',
+    'Anxiety',
+    'Allergies',
+    'Other'
+  ];
+  
+  final List<String> _medicationsOptions = [
+    'No medications recorded',
+    'Lisinopril',
+    'Amlodipine',
+    'Metformin',
+    'Atorvastatin',
+    'Levothyroxine',
+    'Omeprazole',
+    'Losartan',
+    'Albuterol',
+    'Gabapentin',
+    'Hydrochlorothiazide',
+    'Sertraline',
+    'Escitalopram',
+    'Other'
+  ];
+  
+  final List<String> _surgeriesOptions = [
+    'No surgeries recorded',
+    'Appendectomy',
+    'Gallbladder removal',
+    'Hernia repair',
+    'Knee surgery',
+    'Hip replacement',
+    'C-section',
+    'Tonsillectomy',
+    'Wisdom teeth removal',
+    'Cataract surgery',
+    'Other'
+  ];
+  
+  final List<String> _familyHistoryOptions = [
+    'No family history recorded',
+    'Heart Disease',
+    'Diabetes',
+    'High Blood Pressure',
+    'Cancer',
+    'Stroke',
+    'Kidney Disease',
+    'Thyroid Disorder',
+    'Alzheimer\'s',
+    'Asthma',
+    'Arthritis',
+    'Other'
+  ];
 
   @override
   void initState() {
@@ -53,13 +162,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final user = authProvider.user;
       
       if (user != null) {
-        // Set token for patient service
         if (authProvider.token != null) {
           _patientService.setToken(authProvider.token!);
         }
         
-        // Fetch patient details from backend
         final patientDetails = await _getPatientDetails(authProvider.token);
+        
+        // Extract address data
+        final address = patientDetails['address'] ?? {};
+        final emergencyContact = patientDetails['emergencyContact'] ?? {};
         
         setState(() {
           _userProfile = {
@@ -67,10 +178,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               'name': user.name,
               'email': user.email,
               'phone': user.phone,
-              'dateOfBirth': patientDetails['dateOfBirth'] ?? user.dateOfBirth?.toString().split('T')[0] ?? 'Not set',
+              'dateOfBirth': patientDetails['dateOfBirth'] != null 
+                  ? _formatDate(patientDetails['dateOfBirth']) 
+                  : (user.dateOfBirth?.toString().split('T')[0] ?? 'Not set'),
               'gender': patientDetails['gender'] ?? user.gender ?? 'Not set',
               'bloodType': patientDetails['bloodGroup'] ?? 'Not set',
-              'address': patientDetails['address']?['city'] ?? user.address ?? 'Not set',
+              'address': {
+                'street': address['street']?.toString() ?? '',
+                'city': address['city']?.toString() ?? '',
+                'state': address['state']?.toString() ?? '',
+                'zipCode': address['zipCode']?.toString() ?? '',
+              },
+            },
+            'emergencyContact': {
+              'name': emergencyContact['name']?.toString() ?? '',
+              'relationship': emergencyContact['relationship']?.toString() ?? '',
+              'phone': emergencyContact['phone']?.toString() ?? '',
             },
             'medicalInfo': {
               'allergies': patientDetails['allergies']?.isNotEmpty == true 
@@ -80,10 +203,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? patientDetails['medicalHistory'].map((h) => h['condition']).join(', ')
                   : 'No conditions recorded',
               'currentMedications': patientDetails['currentMedications']?.isNotEmpty == true
-                  ? patientDetails['currentMedications'].map((m) => '${m['name']} ${m['dosage']}').join(', ')
+                  ? patientDetails['currentMedications'].map((m) => '${m['name']}').join(', ')
                   : 'No medications recorded',
-              'surgeries': 'No surgeries recorded',
-              'familyHistory': 'No family history recorded',
+              'surgeries': patientDetails['surgeries']?.isNotEmpty == true
+                  ? patientDetails['surgeries'].join(', ')
+                  : 'No surgeries recorded',
+              'familyHistory': patientDetails['familyHistory']?.isNotEmpty == true
+                  ? patientDetails['familyHistory'].join(', ')
+                  : 'No family history recorded',
             },
           };
           _isLoading = false;
@@ -101,12 +228,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  String _formatDate(dynamic dateValue) {
+    if (dateValue == null) return 'Not set';
+    try {
+      if (dateValue is String) {
+        final date = DateTime.parse(dateValue);
+        return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      } else if (dateValue is DateTime) {
+        return '${dateValue.year}-${dateValue.month.toString().padLeft(2, '0')}-${dateValue.day.toString().padLeft(2, '0')}';
+      }
+    } catch (e) {
+      return dateValue.toString();
+    }
+    return 'Not set';
+  }
+
+  String _getFullAddress() {
+    final address = _userProfile['personalInfo']['address'];
+    final parts = [
+      address['street'],
+      address['city'],
+      address['state'],
+      address['zipCode'],
+    ].where((p) => p != null && p.toString().isNotEmpty).toList();
+    return parts.isNotEmpty ? parts.join(', ') : 'Not set';
+  }
+
   Future<Map<String, dynamic>> _getPatientDetails(String? token) async {
     if (token == null) return {};
     
     try {
       final response = await http.get(
-        Uri.parse(ApiConstants.patients),
+        Uri.parse('${ApiConstants.patients}/me'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -115,8 +268,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] && data['data'] != null && data['data'].isNotEmpty) {
-          return data['data'][0];
+        if (data['success'] && data['data'] != null) {
+          return data['data'];
         }
       }
       return {};
@@ -126,86 +279,153 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // In _ProfileScreenState class
-
-Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
-  setState(() {
-    _isSaving = true;
-  });
-  
-  try {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final token = authProvider.token;
+  Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
+    setState(() {
+      _isSaving = true;
+    });
     
-    if (token == null) {
-      throw Exception('Not authenticated');
-    }
-    
-    print('🔄 Updating profile with token: $token');
-    
-    _patientService.setToken(token);
-    
-    // Prepare update data - ONLY send fields that have changed
-    final updateData = <String, dynamic>{};
-    
-    // Personal info
-    if (newProfile['personalInfo']['name'] != _userProfile['personalInfo']['name']) {
-      updateData['name'] = newProfile['personalInfo']['name'];
-    }
-    if (newProfile['personalInfo']['email'] != _userProfile['personalInfo']['email']) {
-      updateData['email'] = newProfile['personalInfo']['email'];
-    }
-    if (newProfile['personalInfo']['phone'] != _userProfile['personalInfo']['phone']) {
-      updateData['phone'] = newProfile['personalInfo']['phone'];
-    }
-    if (newProfile['personalInfo']['dateOfBirth'] != _userProfile['personalInfo']['dateOfBirth'] &&
-        newProfile['personalInfo']['dateOfBirth'] != 'Not set') {
-      updateData['dateOfBirth'] = newProfile['personalInfo']['dateOfBirth'];
-    }
-    if (newProfile['personalInfo']['gender'] != _userProfile['personalInfo']['gender'] &&
-        newProfile['personalInfo']['gender'] != 'Not set') {
-      updateData['gender'] = newProfile['personalInfo']['gender'];
-    }
-    if (newProfile['personalInfo']['bloodType'] != _userProfile['personalInfo']['bloodType'] &&
-        newProfile['personalInfo']['bloodType'] != 'Not set') {
-      updateData['bloodGroup'] = newProfile['personalInfo']['bloodType'];
-    }
-    if (newProfile['personalInfo']['address'] != _userProfile['personalInfo']['address'] &&
-        newProfile['personalInfo']['address'] != 'Not set') {
-      updateData['address'] = {'city': newProfile['personalInfo']['address']};
-    }
-    
-    // Medical info
-    if (newProfile['medicalInfo']['allergies'] != _userProfile['medicalInfo']['allergies'] &&
-        newProfile['medicalInfo']['allergies'] != 'No allergies recorded') {
-      updateData['allergies'] = newProfile['medicalInfo']['allergies']
-          .split(',')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-    }
-    
-    print('📤 Sending update data: $updateData');
-    
-    if (updateData.isNotEmpty) {
-      await _patientService.updatePatientProfile(updateData);
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
       
-      // Update local profile
-      setState(() {
-        _userProfile = newProfile;
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
+      if (token == null) {
+        throw Exception('Not authenticated');
       }
-    } else {
-      if (mounted) {
+      
+      _patientService.setToken(token);
+      
+      final updateData = <String, dynamic>{};
+      
+      // Personal info
+      if (newProfile['personalInfo']['name'] != _userProfile['personalInfo']['name']) {
+        updateData['name'] = newProfile['personalInfo']['name'];
+      }
+      if (newProfile['personalInfo']['email'] != _userProfile['personalInfo']['email']) {
+        updateData['email'] = newProfile['personalInfo']['email'];
+      }
+      if (newProfile['personalInfo']['phone'] != _userProfile['personalInfo']['phone']) {
+        updateData['phone'] = newProfile['personalInfo']['phone'];
+      }
+      if (newProfile['personalInfo']['dateOfBirth'] != _userProfile['personalInfo']['dateOfBirth'] &&
+          newProfile['personalInfo']['dateOfBirth'] != 'Not set') {
+        updateData['dateOfBirth'] = newProfile['personalInfo']['dateOfBirth'];
+      }
+      if (newProfile['personalInfo']['gender'] != _userProfile['personalInfo']['gender'] &&
+          newProfile['personalInfo']['gender'] != 'Not set') {
+        updateData['gender'] = newProfile['personalInfo']['gender'];
+      }
+      if (newProfile['personalInfo']['bloodType'] != _userProfile['personalInfo']['bloodType'] &&
+          newProfile['personalInfo']['bloodType'] != 'Not set') {
+        updateData['bloodGroup'] = newProfile['personalInfo']['bloodType'];
+      }
+      
+      // Address update
+      final oldAddress = _userProfile['personalInfo']['address'];
+      final newAddress = newProfile['personalInfo']['address'];
+      if (newAddress['street'] != oldAddress['street'] ||
+          newAddress['city'] != oldAddress['city'] ||
+          newAddress['state'] != oldAddress['state'] ||
+          newAddress['zipCode'] != oldAddress['zipCode']) {
+        updateData['address'] = {
+          'street': newAddress['street'],
+          'city': newAddress['city'],
+          'state': newAddress['state'],
+          'zipCode': newAddress['zipCode'],
+        };
+      }
+      
+      // Emergency Contact update
+      final oldEmergency = _userProfile['emergencyContact'];
+      final newEmergency = newProfile['emergencyContact'];
+      if (newEmergency['name'] != oldEmergency['name'] ||
+          newEmergency['relationship'] != oldEmergency['relationship'] ||
+          newEmergency['phone'] != oldEmergency['phone']) {
+        updateData['emergencyContact'] = {
+          'name': newEmergency['name'],
+          'phone': newEmergency['phone'],
+          'relationship': newEmergency['relationship'],
+        };
+      }
+      
+      // Medical info - Allergies
+      if (newProfile['medicalInfo']['allergies'] != _userProfile['medicalInfo']['allergies'] &&
+          newProfile['medicalInfo']['allergies'] != 'No allergies recorded') {
+        updateData['allergies'] = newProfile['medicalInfo']['allergies']
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty && s != 'No allergies recorded')
+            .toList();
+      }
+      
+      // Medical info - Conditions
+      if (newProfile['medicalInfo']['medicalConditions'] != _userProfile['medicalInfo']['medicalConditions'] &&
+          newProfile['medicalInfo']['medicalConditions'] != 'No conditions recorded') {
+        updateData['medicalHistory'] = newProfile['medicalInfo']['medicalConditions']
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty && s != 'No conditions recorded')
+            .map((condition) => ({
+              'condition': condition,
+              'diagnosedDate': DateTime.now().toIso8601String(),
+              'notes': ''
+            }))
+            .toList();
+      }
+      
+      // Medical info - Medications
+      if (newProfile['medicalInfo']['currentMedications'] != _userProfile['medicalInfo']['currentMedications'] &&
+          newProfile['medicalInfo']['currentMedications'] != 'No medications recorded') {
+        updateData['currentMedications'] = newProfile['medicalInfo']['currentMedications']
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty && s != 'No medications recorded')
+            .map((med) => ({
+              'name': med,
+              'dosage': '',
+              'frequency': ''
+            }))
+            .toList();
+      }
+      
+      // Medical info - Surgeries
+      if (newProfile['medicalInfo']['surgeries'] != _userProfile['medicalInfo']['surgeries'] &&
+          newProfile['medicalInfo']['surgeries'] != 'No surgeries recorded') {
+        updateData['surgeries'] = newProfile['medicalInfo']['surgeries']
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty && s != 'No surgeries recorded')
+            .toList();
+      }
+      
+      // Medical info - Family History
+      if (newProfile['medicalInfo']['familyHistory'] != _userProfile['medicalInfo']['familyHistory'] &&
+          newProfile['medicalInfo']['familyHistory'] != 'No family history recorded') {
+        updateData['familyHistory'] = newProfile['medicalInfo']['familyHistory']
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty && s != 'No family history recorded')
+            .toList();
+      }
+      
+      print('📤 Sending update data: $updateData');
+      
+      if (updateData.isNotEmpty) {
+        await _patientService.updatePatientProfile(updateData);
+        
+        setState(() {
+          _userProfile = newProfile;
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile updated successfully!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('No changes to update'),
@@ -213,35 +433,36 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
           ),
         );
       }
-    }
-  } catch (e) {
-    print('❌ Error updating profile: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating profile: ${e.toString().replaceFirst('Exception: ', '')}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
-  } finally {
-    if (mounted) {
-      setState(() {
-        _isSaving = false;
-      });
+    } catch (e) {
+      print('❌ Error updating profile: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating profile: ${e.toString().replaceFirst('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
-}
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final theme = Theme.of(context);
 
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('My Profile'),
-          backgroundColor: const Color(0xFF3498db),
+          backgroundColor: theme.primaryColor,
           foregroundColor: Colors.white,
         ),
         body: const Center(
@@ -255,7 +476,7 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Profile'),
-        backgroundColor: const Color(0xFF3498db),
+        backgroundColor: theme.primaryColor,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -279,19 +500,16 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Profile Header
             _buildProfileHeader(_userProfile['personalInfo']),
             const SizedBox(height: 24),
-            
-            // Personal Information
             _buildPersonalInfoSection(_userProfile['personalInfo']),
             const SizedBox(height: 24),
-            
-            // Medical Information
+            _buildAddressSection(_userProfile['personalInfo']['address']),
+            const SizedBox(height: 24),
+            _buildEmergencyContactSection(_userProfile['emergencyContact']),
+            const SizedBox(height: 24),
             _buildMedicalInfoSection(_userProfile['medicalInfo']),
             const SizedBox(height: 24),
-            
-            // Settings
             _buildSettingsSection(context, authProvider),
           ],
         ),
@@ -300,6 +518,7 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
   }
 
   Widget _buildProfileHeader(Map<String, dynamic> personalInfo) {
+    final theme = Theme.of(context);
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -311,11 +530,11 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
           children: [
             CircleAvatar(
               radius: 40,
-              backgroundColor: const Color(0xFF3498db).withOpacity(0.1),
-              child: const Icon(
+              backgroundColor: theme.primaryColor.withOpacity(0.1),
+              child: Icon(
                 Icons.person,
                 size: 40,
-                color: Color(0xFF3498db),
+                color: theme.primaryColor,
               ),
             ),
             const SizedBox(width: 16),
@@ -325,17 +544,17 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
                 children: [
                   Text(
                     personalInfo['name'] ?? 'User Name',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF2c3e50),
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     personalInfo['email'] ?? 'user@example.com',
-                    style: const TextStyle(
-                      color: Color(0xFF7f8c8d),
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -364,6 +583,7 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
   }
 
   Widget _buildPersonalInfoSection(Map<String, dynamic> personalInfo) {
+    final theme = Theme.of(context);
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -374,16 +594,16 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.person_outline, color: Color(0xFF3498db)),
-                SizedBox(width: 8),
+                Icon(Icons.person_outline, color: theme.primaryColor),
+                const SizedBox(width: 8),
                 Text(
                   'Personal Information',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2c3e50),
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -395,43 +615,64 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
             _buildInfoRow('Date of Birth', personalInfo['dateOfBirth'] ?? 'Not set'),
             _buildInfoRow('Gender', personalInfo['gender'] ?? 'Not set'),
             _buildInfoRow('Blood Type', personalInfo['bloodType'] ?? 'Not set'),
-            _buildInfoRow('Address', personalInfo['address'] ?? 'Not set'),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF2c3e50),
-              ),
+  Widget _buildAddressSection(Map<String, dynamic> address) {
+    final theme = Theme.of(context);
+    final fullAddress = [
+      address['street'],
+      address['city'],
+      address['state'],
+      address['zipCode'],
+    ].where((p) => p != null && p.toString().isNotEmpty).join(', ');
+    
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.location_on, color: theme.primaryColor),
+                const SizedBox(width: 8),
+                Text(
+                  'Address',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
             ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: Color(0xFF7f8c8d),
+            const SizedBox(height: 16),
+            if (fullAddress.isNotEmpty && fullAddress != 'Not set')
+              Text(
+                fullAddress,
+                style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6)),
+              )
+            else
+              Text(
+                'No address added',
+                style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontStyle: FontStyle.italic),
               ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildMedicalInfoSection(Map<String, dynamic> medicalInfo) {
+  Widget _buildEmergencyContactSection(Map<String, dynamic> emergencyContact) {
+    final theme = Theme.of(context);
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -444,14 +685,80 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
           children: [
             const Row(
               children: [
-                Icon(Icons.medical_services, color: Color(0xFF3498db)),
+                Icon(Icons.emergency, color: Color(0xFFe74c3c)),
                 SizedBox(width: 8),
+                Text(
+                  'Emergency Contact',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2c3e50),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow('Name', emergencyContact['name']?.isNotEmpty == true ? emergencyContact['name'] : 'Not set'),
+            _buildInfoRow('Relationship', emergencyContact['relationship']?.isNotEmpty == true ? emergencyContact['relationship'] : 'Not set'),
+            _buildInfoRow('Phone', emergencyContact['phone']?.isNotEmpty == true ? emergencyContact['phone'] : 'Not set'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMedicalInfoSection(Map<String, dynamic> medicalInfo) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.medical_services, color: theme.primaryColor),
+                const SizedBox(width: 8),
                 Text(
                   'Medical Information',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2c3e50),
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -469,6 +776,7 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
   }
 
   Widget _buildMedicalItem(String title, String value) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
@@ -476,91 +784,37 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w500,
-              color: Color(0xFF2c3e50),
+              color: theme.colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              color: Color(0xFF7f8c8d),
+            style: TextStyle(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 8),
-          const Divider(height: 1),
+          Divider(height: 1, color: theme.colorScheme.onSurface.withOpacity(0.1)),
         ],
       ),
     );
   }
 
-  Widget _buildSettingsSection(BuildContext context, AuthProvider authProvider) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.settings, color: Color(0xFF3498db)),
-                SizedBox(width: 8),
-                Text(
-                  'Settings',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2c3e50),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildSettingsItem(Icons.notifications, 'Notifications', true),
-            _buildSettingsItem(Icons.security, 'Privacy & Security', false),
-            _buildSettingsItem(Icons.medical_information, 'Health Data Sharing', false),
-            _buildSettingsItem(Icons.language, 'Language', false),
-            _buildSettingsItem(Icons.help, 'Help & Support', false),
-            _buildSettingsItem(Icons.info, 'About Seva Pulse', false),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  _showLogoutDialog(context, authProvider);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFe74c3c).withOpacity(0.1),
-                  foregroundColor: const Color(0xFFe74c3c),
-                ),
-                child: const Text('Logout'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingsItem(IconData icon, String title, bool hasSwitch) {
-    return ListTile(
-      leading: Icon(icon, color: const Color(0xFF3498db)),
-      title: Text(title),
-      trailing: hasSwitch
-          ? Switch(
-              value: true,
-              onChanged: (value) {},
-              activeColor: const Color(0xFF3498db),
-            )
-          : const Icon(Icons.chevron_right, color: Color(0xFF7f8c8d)),
-      onTap: () {},
-    );
-  }
+  
+Widget _buildSettingsSection(BuildContext context, AuthProvider authProvider) {
+  return SettingsSection(
+    onLogout: () => _showLogoutDialog(context, authProvider),
+    showNotifications: true,
+    showPrivacy: true,
+    showHealthData: true,
+    showLanguage: true,
+    showHelp: true,
+    showAbout: true,
+  );
+}
 
   void _showEditProfileDialog(BuildContext context, AuthProvider authProvider) {
     showDialog(
@@ -569,6 +823,14 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
         authProvider: authProvider,
         currentProfile: _userProfile,
         onProfileUpdated: _updateProfile,
+        genderOptions: _genderOptions,
+        bloodTypeOptions: _bloodTypeOptions,
+        relationshipOptions: _relationshipOptions,
+        allergiesOptions: _allergiesOptions,
+        medicalConditionsOptions: _medicalConditionsOptions,
+        medicationsOptions: _medicationsOptions,
+        surgeriesOptions: _surgeriesOptions,
+        familyHistoryOptions: _familyHistoryOptions,
       ),
     );
   }
@@ -600,17 +862,33 @@ Future<void> _updateProfile(Map<String, dynamic> newProfile) async {
   }
 }
 
-// EditProfileDialog remains the same as before
+// Enhanced EditProfileDialog with Medical Dropdowns and theme support
 class EditProfileDialog extends StatefulWidget {
   final AuthProvider authProvider;
   final Map<String, dynamic> currentProfile;
   final Function(Map<String, dynamic>) onProfileUpdated;
+  final List<String> genderOptions;
+  final List<String> bloodTypeOptions;
+  final List<String> relationshipOptions;
+  final List<String> allergiesOptions;
+  final List<String> medicalConditionsOptions;
+  final List<String> medicationsOptions;
+  final List<String> surgeriesOptions;
+  final List<String> familyHistoryOptions;
 
   const EditProfileDialog({
     Key? key,
     required this.authProvider,
     required this.currentProfile,
     required this.onProfileUpdated,
+    required this.genderOptions,
+    required this.bloodTypeOptions,
+    required this.relationshipOptions,
+    required this.allergiesOptions,
+    required this.medicalConditionsOptions,
+    required this.medicationsOptions,
+    required this.surgeriesOptions,
+    required this.familyHistoryOptions,
   }) : super(key: key);
 
   @override
@@ -619,38 +897,74 @@ class EditProfileDialog extends StatefulWidget {
 
 class _EditProfileDialogState extends State<EditProfileDialog> {
   final _formKey = GlobalKey<FormState>();
+  
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _dobController;
-  late TextEditingController _genderController;
-  late TextEditingController _bloodTypeController;
-  late TextEditingController _addressController;
-  late TextEditingController _allergiesController;
-  late TextEditingController _conditionsController;
-  late TextEditingController _medicationsController;
-  late TextEditingController _surgeriesController;
-  late TextEditingController _familyHistoryController;
+  
+  // Address controllers
+  late TextEditingController _streetController;
+  late TextEditingController _cityController;
+  late TextEditingController _stateController;
+  late TextEditingController _zipCodeController;
+  
+  // Emergency Contact controllers
+  late TextEditingController _emergencyNameController;
+  late TextEditingController _emergencyPhoneController;
+  
+  // Medical selections
+  late String _selectedGender;
+  late String _selectedBloodType;
+  late String _selectedRelationship;
+  late String _selectedAllergies;
+  late String _selectedMedicalConditions;
+  late String _selectedMedications;
+  late String _selectedSurgeries;
+  late String _selectedFamilyHistory;
+  
+  // Custom text controllers for "Other" option
+  late TextEditingController _customAllergiesController;
+  late TextEditingController _customMedicalConditionsController;
+  late TextEditingController _customMedicationsController;
+  late TextEditingController _customSurgeriesController;
+  late TextEditingController _customFamilyHistoryController;
 
   @override
   void initState() {
     super.initState();
     final personalInfo = widget.currentProfile['personalInfo'];
+    final address = personalInfo['address'] ?? {};
+    final emergencyContact = widget.currentProfile['emergencyContact'] ?? {};
     final medicalInfo = widget.currentProfile['medicalInfo'];
     
     _nameController = TextEditingController(text: personalInfo['name'] ?? '');
     _emailController = TextEditingController(text: personalInfo['email'] ?? '');
     _phoneController = TextEditingController(text: personalInfo['phone'] ?? '');
     _dobController = TextEditingController(text: personalInfo['dateOfBirth'] != 'Not set' ? personalInfo['dateOfBirth'] : '');
-    _genderController = TextEditingController(text: personalInfo['gender'] != 'Not set' ? personalInfo['gender'] : '');
-    _bloodTypeController = TextEditingController(text: personalInfo['bloodType'] != 'Not set' ? personalInfo['bloodType'] : '');
-    _addressController = TextEditingController(text: personalInfo['address'] != 'Not set' ? personalInfo['address'] : '');
     
-    _allergiesController = TextEditingController(text: medicalInfo['allergies'] != 'No allergies recorded' ? medicalInfo['allergies'] : '');
-    _conditionsController = TextEditingController(text: medicalInfo['medicalConditions'] != 'No conditions recorded' ? medicalInfo['medicalConditions'] : '');
-    _medicationsController = TextEditingController(text: medicalInfo['currentMedications'] != 'No medications recorded' ? medicalInfo['currentMedications'] : '');
-    _surgeriesController = TextEditingController(text: medicalInfo['surgeries'] != 'No surgeries recorded' ? medicalInfo['surgeries'] : '');
-    _familyHistoryController = TextEditingController(text: medicalInfo['familyHistory'] != 'No family history recorded' ? medicalInfo['familyHistory'] : '');
+    _streetController = TextEditingController(text: address['street'] ?? '');
+    _cityController = TextEditingController(text: address['city'] ?? '');
+    _stateController = TextEditingController(text: address['state'] ?? '');
+    _zipCodeController = TextEditingController(text: address['zipCode'] ?? '');
+    
+    _emergencyNameController = TextEditingController(text: emergencyContact['name'] ?? '');
+    _emergencyPhoneController = TextEditingController(text: emergencyContact['phone'] ?? '');
+    
+    _selectedGender = personalInfo['gender'] ?? 'Not set';
+    _selectedBloodType = personalInfo['bloodType'] ?? 'Not set';
+    _selectedRelationship = emergencyContact['relationship'] ?? 'Not set';
+    _selectedAllergies = medicalInfo['allergies'] ?? 'No allergies recorded';
+    _selectedMedicalConditions = medicalInfo['medicalConditions'] ?? 'No conditions recorded';
+    _selectedMedications = medicalInfo['currentMedications'] ?? 'No medications recorded';
+    _selectedSurgeries = medicalInfo['surgeries'] ?? 'No surgeries recorded';
+    _selectedFamilyHistory = medicalInfo['familyHistory'] ?? 'No family history recorded';
+    
+    _customAllergiesController = TextEditingController();
+    _customMedicalConditionsController = TextEditingController();
+    _customMedicationsController = TextEditingController();
+    _customSurgeriesController = TextEditingController();
+    _customFamilyHistoryController = TextEditingController();
   }
 
   @override
@@ -659,35 +973,88 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     _emailController.dispose();
     _phoneController.dispose();
     _dobController.dispose();
-    _genderController.dispose();
-    _bloodTypeController.dispose();
-    _addressController.dispose();
-    _allergiesController.dispose();
-    _conditionsController.dispose();
-    _medicationsController.dispose();
-    _surgeriesController.dispose();
-    _familyHistoryController.dispose();
+    _streetController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _zipCodeController.dispose();
+    _emergencyNameController.dispose();
+    _emergencyPhoneController.dispose();
+    _customAllergiesController.dispose();
+    _customMedicalConditionsController.dispose();
+    _customMedicationsController.dispose();
+    _customSurgeriesController.dispose();
+    _customFamilyHistoryController.dispose();
     super.dispose();
+  }
+
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        _dobController.text = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      });
+    }
   }
 
   void _saveProfile() {
     if (_formKey.currentState!.validate()) {
+      // Handle custom values
+      String allergies = _selectedAllergies;
+      if (_selectedAllergies == 'Other' && _customAllergiesController.text.isNotEmpty) {
+        allergies = _customAllergiesController.text;
+      }
+      
+      String medicalConditions = _selectedMedicalConditions;
+      if (_selectedMedicalConditions == 'Other' && _customMedicalConditionsController.text.isNotEmpty) {
+        medicalConditions = _customMedicalConditionsController.text;
+      }
+      
+      String medications = _selectedMedications;
+      if (_selectedMedications == 'Other' && _customMedicationsController.text.isNotEmpty) {
+        medications = _customMedicationsController.text;
+      }
+      
+      String surgeries = _selectedSurgeries;
+      if (_selectedSurgeries == 'Other' && _customSurgeriesController.text.isNotEmpty) {
+        surgeries = _customSurgeriesController.text;
+      }
+      
+      String familyHistory = _selectedFamilyHistory;
+      if (_selectedFamilyHistory == 'Other' && _customFamilyHistoryController.text.isNotEmpty) {
+        familyHistory = _customFamilyHistoryController.text;
+      }
+      
       final updatedProfile = {
         'personalInfo': {
           'name': _nameController.text,
           'email': _emailController.text,
           'phone': _phoneController.text,
           'dateOfBirth': _dobController.text.isEmpty ? 'Not set' : _dobController.text,
-          'gender': _genderController.text.isEmpty ? 'Not set' : _genderController.text,
-          'bloodType': _bloodTypeController.text.isEmpty ? 'Not set' : _bloodTypeController.text,
-          'address': _addressController.text.isEmpty ? 'Not set' : _addressController.text,
+          'gender': _selectedGender,
+          'bloodType': _selectedBloodType,
+          'address': {
+            'street': _streetController.text,
+            'city': _cityController.text,
+            'state': _stateController.text,
+            'zipCode': _zipCodeController.text,
+          },
+        },
+        'emergencyContact': {
+          'name': _emergencyNameController.text,
+          'phone': _emergencyPhoneController.text,
+          'relationship': _selectedRelationship,
         },
         'medicalInfo': {
-          'allergies': _allergiesController.text.isEmpty ? 'No allergies recorded' : _allergiesController.text,
-          'medicalConditions': _conditionsController.text.isEmpty ? 'No conditions recorded' : _conditionsController.text,
-          'currentMedications': _medicationsController.text.isEmpty ? 'No medications recorded' : _medicationsController.text,
-          'surgeries': _surgeriesController.text.isEmpty ? 'No surgeries recorded' : _surgeriesController.text,
-          'familyHistory': _familyHistoryController.text.isEmpty ? 'No family history recorded' : _familyHistoryController.text,
+          'allergies': allergies,
+          'medicalConditions': medicalConditions,
+          'currentMedications': medications,
+          'surgeries': surgeries,
+          'familyHistory': familyHistory,
         },
       };
 
@@ -696,13 +1063,54 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     }
   }
 
+  Widget _buildDropdownField(String label, String value, List<String> options, Function(String?) onChanged,
+      {TextEditingController? customController}) {
+    final theme = Theme.of(context);
+    final isOtherSelected = value == 'Other';
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          value: options.contains(value) ? value : (options.contains('Other') ? 'Other' : null),
+          decoration: InputDecoration(
+            labelText: label,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          ),
+          items: options.map((option) {
+            return DropdownMenuItem(
+              value: option,
+              child: Text(option),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+        if (isOtherSelected && customController != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: TextFormField(
+              controller: customController,
+              decoration: InputDecoration(
+                labelText: 'Please specify',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Dialog(
       insetPadding: const EdgeInsets.all(20),
       child: Container(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.9,
+          maxWidth: 500,
         ),
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -711,57 +1119,80 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Edit Profile',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2c3e50),
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
               ),
               const SizedBox(height: 20),
-              
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Personal Information',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF3498db),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
+                      // Personal Information
+                      _buildSectionHeader('Personal Information'),
+                      const SizedBox(height: 12),
                       _buildTextField('Full Name', _nameController),
+                      const SizedBox(height: 12),
                       _buildTextField('Email', _emailController),
+                      const SizedBox(height: 12),
                       _buildTextField('Phone', _phoneController),
-                      _buildTextField('Date of Birth (YYYY-MM-DD)', _dobController),
-                      _buildTextField('Gender', _genderController),
-                      _buildTextField('Blood Type', _bloodTypeController),
-                      _buildTextField('Address', _addressController, maxLines: 2),
+                      const SizedBox(height: 12),
+                      _buildDateField('Date of Birth', _dobController, _selectDate),
+                      const SizedBox(height: 12),
+                      _buildDropdownField('Gender', _selectedGender, widget.genderOptions, (value) => setState(() => _selectedGender = value!)),
+                      const SizedBox(height: 12),
+                      _buildDropdownField('Blood Type', _selectedBloodType, widget.bloodTypeOptions, (value) => setState(() => _selectedBloodType = value!)),
+                      
                       const SizedBox(height: 24),
-                      const Text(
-                        'Medical Information',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF3498db),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildTextField('Allergies (comma separated)', _allergiesController),
-                      _buildTextField('Medical Conditions', _conditionsController),
-                      _buildTextField('Current Medications', _medicationsController),
-                      _buildTextField('Surgeries', _surgeriesController),
-                      _buildTextField('Family History', _familyHistoryController),
+                      // Address Section
+                      _buildSectionHeader('Address'),
+                      const SizedBox(height: 12),
+                      _buildTextField('Street', _streetController),
+                      const SizedBox(height: 12),
+                      _buildTextField('City', _cityController),
+                      const SizedBox(height: 12),
+                      _buildTextField('State', _stateController),
+                      const SizedBox(height: 12),
+                      _buildTextField('Zip Code', _zipCodeController, keyboardType: TextInputType.number),
+                      
+                      const SizedBox(height: 24),
+                      // Emergency Contact Section
+                      _buildSectionHeader('Emergency Contact', iconColor: Colors.red),
+                      const SizedBox(height: 12),
+                      _buildTextField('Contact Name', _emergencyNameController),
+                      const SizedBox(height: 12),
+                      _buildTextField('Contact Phone', _emergencyPhoneController, keyboardType: TextInputType.phone),
+                      const SizedBox(height: 12),
+                      _buildDropdownField('Relationship', _selectedRelationship, widget.relationshipOptions, (value) => setState(() => _selectedRelationship = value!)),
+                      
+                      const SizedBox(height: 24),
+                      // Medical Information Section
+                      _buildSectionHeader('Medical Information'),
+                      const SizedBox(height: 12),
+                      _buildDropdownField('Allergies', _selectedAllergies, widget.allergiesOptions, 
+                          (value) => setState(() => _selectedAllergies = value!), 
+                          customController: _customAllergiesController),
+                      const SizedBox(height: 12),
+                      _buildDropdownField('Medical Conditions', _selectedMedicalConditions, widget.medicalConditionsOptions, 
+                          (value) => setState(() => _selectedMedicalConditions = value!), 
+                          customController: _customMedicalConditionsController),
+                      const SizedBox(height: 12),
+                      _buildDropdownField('Current Medications', _selectedMedications, widget.medicationsOptions, 
+                          (value) => setState(() => _selectedMedications = value!), 
+                          customController: _customMedicationsController),
+                      const SizedBox(height: 12),
+                      _buildDropdownField('Surgeries', _selectedSurgeries, widget.surgeriesOptions, 
+                          (value) => setState(() => _selectedSurgeries = value!), 
+                          customController: _customSurgeriesController),
+                      const SizedBox(height: 12),
+                      _buildDropdownField('Family History', _selectedFamilyHistory, widget.familyHistoryOptions, 
+                          (value) => setState(() => _selectedFamilyHistory = value!), 
+                          customController: _customFamilyHistoryController),
                     ],
                   ),
                 ),
               ),
-              
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -775,9 +1206,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: _saveProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3498db),
-                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF27ae60)),
                       child: const Text('Save'),
                     ),
                   ),
@@ -790,30 +1219,44 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+  Widget _buildSectionHeader(String title, {Color iconColor = Colors.blue}) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(Icons.info, size: 18, color: iconColor),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
         ),
-        validator: (value) {
-          if (label.contains('Name') && (value == null || value.isEmpty)) {
-            return 'Please enter $label';
-          }
-          if (label.contains('Email') && value != null && value.isNotEmpty) {
-            if (!value.contains('@')) {
-              return 'Please enter a valid email';
-            }
-          }
-          return null;
-        },
+      ],
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller,
+      {TextInputType keyboardType = TextInputType.text, int maxLines = 1}) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+    );
+  }
+
+  Widget _buildDateField(String label, TextEditingController controller, VoidCallback onTap) {
+    return TextFormField(
+      controller: controller,
+      readOnly: true,
+      onTap: onTap,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        suffixIcon: const Icon(Icons.calendar_today),
       ),
     );
   }

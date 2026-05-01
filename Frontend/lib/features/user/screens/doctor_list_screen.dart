@@ -1,9 +1,11 @@
+// lib/features/user/screens/doctor_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../data/providers/auth_provider.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 import 'book_appointment_screen.dart';
 
 class DoctorListScreen extends StatefulWidget {
@@ -28,7 +30,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
   bool _isLoading = true;
   String? _error;
   String _searchQuery = '';
-  String _availabilityFilter = 'all'; // all, available, unavailable
+  String _availabilityFilter = 'all';
 
   @override
   void initState() {
@@ -83,7 +85,6 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
             final specialtyName = widget.specialty.toLowerCase();
             final departmentName = widget.department.toLowerCase();
             
-            // Match by specialization or department
             return specialization.contains(specialtyName) ||
                    department.contains(departmentName) ||
                    specialization.contains(departmentName) ||
@@ -126,7 +127,6 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
   void _filterDoctors() {
     setState(() {
       _filteredDoctors = _doctors.where((doctor) {
-        // Search filter
         final user = doctor['user'] ?? {};
         final name = user['name']?.toString().toLowerCase() ?? '';
         final specialization = doctor['specialization']?.toString().toLowerCase() ?? '';
@@ -134,10 +134,8 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
             name.contains(_searchQuery.toLowerCase()) ||
             specialization.contains(_searchQuery.toLowerCase());
         
-        // Availability filter
         bool matchesAvailability = true;
         if (_availabilityFilter == 'available') {
-          // Check if doctor is available (you can implement this based on your data structure)
           matchesAvailability = doctor['isAvailable'] ?? true;
         } else if (_availabilityFilter == 'unavailable') {
           matchesAvailability = !(doctor['isAvailable'] ?? true);
@@ -151,9 +149,10 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: context.backgroundColor,
       appBar: AppBar(
         title: Text(widget.specialty),
-        backgroundColor: const Color(0xFF3498db),
+        backgroundColor: context.primaryColor,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -164,7 +163,11 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(context.primaryColor),
+              ),
+            )
           : _error != null
               ? Center(
                   child: Column(
@@ -172,7 +175,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                     children: [
                       Icon(Icons.error_outline, size: 64, color: Colors.red),
                       const SizedBox(height: 16),
-                      Text(_error!),
+                      Text(_error!, style: TextStyle(color: context.secondaryText)),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _fetchDoctors,
@@ -186,7 +189,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                     // Search and Filter Section
                     Container(
                       padding: const EdgeInsets.all(16),
-                      color: Colors.white,
+                      color: context.surfaceColor,
                       child: Column(
                         children: [
                           // Search Bar
@@ -213,7 +216,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               filled: true,
-                              fillColor: Colors.grey[50],
+                              fillColor: context.cardColor,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -235,7 +238,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                               child: Text(
                                 '${_filteredDoctors.length} doctor${_filteredDoctors.length != 1 ? 's' : ''} found',
                                 style: TextStyle(
-                                  color: Colors.grey[600],
+                                  color: context.secondaryText,
                                   fontSize: 12,
                                 ),
                               ),
@@ -254,16 +257,16 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                                   Icon(
                                     Icons.medical_services,
                                     size: 64,
-                                    color: const Color(0xFFbdc3c7),
+                                    color: context.secondaryText.withOpacity(0.4),
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
                                     _searchQuery.isEmpty
                                         ? 'No doctors found for this specialty'
                                         : 'No doctors match your search',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 16,
-                                      color: Color(0xFF7f8c8d),
+                                      color: context.secondaryText,
                                     ),
                                   ),
                                   const SizedBox(height: 8),
@@ -275,7 +278,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                                           _filterDoctors();
                                         });
                                       },
-                                      child: const Text('Clear Search'),
+                                      child: Text('Clear Search', style: TextStyle(color: context.primaryColor)),
                                     ),
                                 ],
                               ),
@@ -296,7 +299,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
 
   Widget _buildFilterChip(String label, String value) {
     return FilterChip(
-      label: Text(label),
+      label: Text(label, style: TextStyle(color: context.primaryText)),
       selected: _availabilityFilter == value,
       onSelected: (selected) {
         setState(() {
@@ -304,15 +307,27 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
           _filterDoctors();
         });
       },
-      selectedColor: const Color(0xFF3498db).withOpacity(0.2),
-      checkmarkColor: const Color(0xFF3498db),
-      backgroundColor: Colors.grey[100],
+      selectedColor: context.primaryColor.withOpacity(0.2),
+      checkmarkColor: context.primaryColor,
+      backgroundColor: context.cardColor,
     );
   }
 
   Widget _buildDoctorCard(Map<String, dynamic> doctor) {
     final user = doctor['user'] ?? {};
+    // Safely get values with proper type conversion
+    final doctorId = doctor['_id']?.toString() ?? '';
+    final name = user['name']?.toString() ?? 'Doctor';
+    final specialization = doctor['specialization']?.toString() ?? widget.specialty;
+    final experience = doctor['experience'] ?? 0;
+    // Convert experience to int safely
+    final experienceYears = experience is int ? experience : (int.tryParse(experience.toString()) ?? 0);
+    final consultationFee = doctor['consultationFee'] ?? 500;
+    // Convert fee to int safely
+    final fee = consultationFee is int ? consultationFee : (int.tryParse(consultationFee.toString()) ?? 500);
     final isAvailable = doctor['isAvailable'] ?? true;
+    final address = user['address'];
+    final hospital = address is Map ? (address['city']?.toString() ?? 'City Hospital') : (address?.toString() ?? 'City Hospital');
     
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -320,6 +335,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
+      color: context.cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -329,11 +345,11 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
               children: [
                 CircleAvatar(
                   radius: 30,
-                  backgroundColor: const Color(0xFF3498db).withOpacity(0.1),
-                  child: const Icon(
+                  backgroundColor: context.primaryColor.withOpacity(0.1),
+                  child: Icon(
                     Icons.person,
                     size: 30,
-                    color: Color(0xFF3498db),
+                    color: context.primaryColor,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -342,18 +358,18 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        user['name'] ?? 'Doctor',
-                        style: const TextStyle(
+                        name,
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2c3e50),
+                          color: context.primaryText,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        doctor['specialization'] ?? widget.specialty,
-                        style: const TextStyle(
-                          color: Color(0xFF3498db),
+                        specialization,
+                        style: TextStyle(
+                          color: context.primaryColor,
                           fontSize: 14,
                         ),
                       ),
@@ -382,19 +398,19 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
             const SizedBox(height: 12),
             
             Text(
-              '${doctor['experience'] ?? 'N/A'} years experience',
-              style: const TextStyle(
-                color: Color(0xFF7f8c8d),
+              '$experienceYears years experience',
+              style: TextStyle(
+                color: context.secondaryText,
                 fontSize: 14,
               ),
             ),
             const SizedBox(height: 8),
             
             Text(
-              'Consultation Fee: ₹${doctor['consultationFee'] ?? '500'}',
-              style: const TextStyle(
+              'Consultation Fee: ₹$fee',
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF27ae60),
+                color: const Color(0xFF27ae60),
                 fontSize: 16,
               ),
             ),
@@ -408,11 +424,12 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                       _showDoctorProfile(doctor);
                     },
                     style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: context.primaryColor),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text('View Profile'),
+                    child: Text('View Profile', style: TextStyle(color: context.primaryColor)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -420,16 +437,20 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                   child: ElevatedButton(
                     onPressed: isAvailable
                         ? () {
+                            print('=== BOOKING APPOINTMENT ===');
+                            print('Doctor ID: $doctorId');
+                            print('Doctor Name: $name');
+                            
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => BookAppointmentScreen(
                                   doctor: {
-                                    'id': doctor['_id'],
-                                    'name': user['name'],
-                                    'specialization': doctor['specialization'],
-                                    'hospital': user['address']?['city'] ?? 'City Hospital',
-                                    'consultationFee': doctor['consultationFee'] ?? 500,
+                                    'id': doctorId,
+                                    'name': name,
+                                    'specialization': specialization,
+                                    'hospital': hospital,
+                                    'consultationFee': fee,
                                   },
                                   specialty: widget.specialty,
                                 ),
@@ -438,11 +459,10 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                           }
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF3498db),
+                      backgroundColor: isAvailable ? const Color(0xFF27ae60) : Colors.grey,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      disabledBackgroundColor: Colors.grey[300],
                     ),
                     child: const Text('Book Appointment'),
                   ),
@@ -457,8 +477,17 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
 
   void _showDoctorProfile(Map<String, dynamic> doctor) {
     final user = doctor['user'] ?? {};
+    final doctorId = doctor['_id']?.toString() ?? '';
+    final name = user['name']?.toString() ?? 'Doctor';
+    final specialization = doctor['specialization']?.toString() ?? widget.specialty;
+    final experience = doctor['experience'] ?? 0;
+    final experienceYears = experience is int ? experience : (int.tryParse(experience.toString()) ?? 0);
+    final consultationFee = doctor['consultationFee'] ?? 500;
+    final fee = consultationFee is int ? consultationFee : (int.tryParse(consultationFee.toString()) ?? 500);
     final qualifications = doctor['qualifications'] ?? [];
     final availability = doctor['availability'] ?? [];
+    final email = user['email']?.toString() ?? '';
+    final phone = user['phone']?.toString() ?? '';
     
     showModalBottomSheet(
       context: context,
@@ -471,6 +500,10 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
+        decoration: BoxDecoration(
+          color: context.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -480,7 +513,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: context.secondaryText.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -489,67 +522,70 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
             
             // Doctor Name and Specialization
             Text(
-              user['name'] ?? 'Doctor',
-              style: const TextStyle(
+              name,
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2c3e50),
+                color: context.primaryText,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              doctor['specialization'] ?? widget.specialty,
-              style: const TextStyle(
+              specialization,
+              style: TextStyle(
                 fontSize: 16,
-                color: Color(0xFF3498db),
+                color: context.primaryColor,
               ),
             ),
             const SizedBox(height: 20),
             
             // Contact Info
-            if (user['email'] != null)
-              _buildProfileDetail(Icons.email, 'Email', user['email']),
-            if (user['phone'] != null)
-              _buildProfileDetail(Icons.phone, 'Phone', user['phone']),
+            if (email.isNotEmpty)
+              _buildProfileDetail(Icons.email, 'Email', email),
+            if (phone.isNotEmpty)
+              _buildProfileDetail(Icons.phone, 'Phone', phone),
             
             const SizedBox(height: 12),
-            _buildProfileDetail(Icons.work, 'Experience', '${doctor['experience'] ?? 'N/A'} years'),
-            _buildProfileDetail(Icons.attach_money, 'Consultation Fee', '₹${doctor['consultationFee'] ?? '500'}'),
+            _buildProfileDetail(Icons.work, 'Experience', '$experienceYears years'),
+            _buildProfileDetail(Icons.attach_money, 'Consultation Fee', '₹$fee'),
             
             const SizedBox(height: 16),
             
             // Qualifications
             if (qualifications.isNotEmpty) ...[
-              const Text(
+              Text(
                 'Qualifications',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2c3e50),
+                  color: context.primaryText,
                 ),
               ),
               const SizedBox(height: 8),
               ...qualifications.map((qual) => Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text('• ${qual['degree'] ?? qual}'),
+                child: Text('• ${qual['degree'] ?? qual.toString()}', style: TextStyle(color: context.primaryText)),
               )),
               const SizedBox(height: 16),
             ],
             
             // Availability
             if (availability.isNotEmpty) ...[
-              const Text(
+              Text(
                 'Availability',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2c3e50),
+                  color: context.primaryText,
                 ),
               ),
               const SizedBox(height: 8),
               ...availability.map((slot) => Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text('${slot['day']}: ${slot['startTime']} - ${slot['endTime']}'),
+                child: Text(
+                  '${slot['day']}: ${slot['startTime']} - ${slot['endTime']}',
+                  style: TextStyle(color: context.primaryText),
+                ),
               )),
               const SizedBox(height: 16),
             ],
@@ -567,11 +603,13 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                     MaterialPageRoute(
                       builder: (context) => BookAppointmentScreen(
                         doctor: {
-                          'id': doctor['_id'],
-                          'name': user['name'],
-                          'specialization': doctor['specialization'],
-                          'hospital': user['address']?['city'] ?? 'City Hospital',
-                          'consultationFee': doctor['consultationFee'] ?? 500,
+                          'id': doctorId,
+                          'name': name,
+                          'specialization': specialization,
+                          'hospital': user['address'] is Map 
+                              ? (user['address']['city']?.toString() ?? 'City Hospital')
+                              : (user['address']?.toString() ?? 'City Hospital'),
+                          'consultationFee': fee,
                         },
                         specialty: widget.specialty,
                       ),
@@ -579,7 +617,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3498db),
+                  backgroundColor: context.primaryColor,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -602,22 +640,22 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF3498db)),
+          Icon(icon, size: 20, color: context.primaryColor),
           const SizedBox(width: 12),
           SizedBox(
             width: 100,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF2c3e50),
+                color: context.primaryText,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: Color(0xFF7f8c8d)),
+              style: TextStyle(color: context.secondaryText),
             ),
           ),
         ],

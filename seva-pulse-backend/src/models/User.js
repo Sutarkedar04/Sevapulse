@@ -19,32 +19,21 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Hash password before saving - FIXED VERSION
+// ✅ CORRECT VERSION FOR MONGOSE v7+ - NO 'next' parameter
 userSchema.pre('save', async function() {
-  // Only hash the password if it has been modified (or is new)
-  if (!this.isModified('password')) {
-    return;
-  }
+  console.log('🔐 PRE-SAVE HOOK TRIGGERED');
+  console.log('📝 this.isModified("password"):', this.isModified('password'));
   
-  try {
-    // Generate salt and hash password
+  if (this.isModified('password')) {
+    console.log('🔑 Hashing password...');
     const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(this.password, salt);
-    this.password = hash;
-  } catch (error) {
-    console.error('Password hashing error:', error);
-    throw new Error('Error hashing password: ' + error.message);
+    this.password = await bcrypt.hash(this.password, salt);
+    console.log('✅ Password hashed successfully');
   }
 });
 
-// Method to compare password
 userSchema.methods.matchPassword = async function(enteredPassword) {
-  try {
-    return await bcrypt.compare(enteredPassword, this.password);
-  } catch (error) {
-    console.error('Password comparison error:', error);
-    return false;
-  }
+  return await bcrypt.compare(enteredPassword, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);

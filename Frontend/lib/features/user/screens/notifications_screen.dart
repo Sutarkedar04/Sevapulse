@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../data/providers/notification_provider.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/models/notification_model.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
@@ -17,7 +18,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
     _loadNotifications();
+  });
   }
 
   Future<void> _loadNotifications() async {
@@ -35,10 +38,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await notificationProvider.markAllAsRead();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('All notifications marked as read'),
-          backgroundColor: Color(0xFF27ae60),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text('All notifications marked as read', style: TextStyle(color: Colors.white)),
+          backgroundColor: const Color(0xFF27ae60),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -47,13 +50,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFf8f9fa),
+      backgroundColor: context.backgroundColor,
       appBar: AppBar(
         title: const Text(
           'Notifications',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF3498db),
+        backgroundColor: context.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -77,7 +80,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: Consumer<NotificationProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading && provider.notifications.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(context.primaryColor),
+              ),
+            );
           }
 
           if (provider.notifications.isEmpty) {
@@ -88,14 +95,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Icon(
                     Icons.notifications_none,
                     size: 80,
-                    color: Colors.grey[400],
+                    color: context.secondaryText.withOpacity(0.4),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No notifications yet',
                     style: TextStyle(
                       fontSize: 18,
-                      color: Colors.grey[600],
+                      color: context.secondaryText,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -104,7 +111,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     'You\'ll be notified about health camps and appointments here',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[500],
+                      color: context.secondaryText.withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -133,25 +140,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     IconData iconData;
     Color iconColor;
     
-    // ✅ Check notification type and set appropriate icon
+    // Check notification type and set appropriate icon
     if (notification.isHealthCampNotification) {
       if (notification.type.contains('CREATE')) {
         iconData = Icons.add_circle_outline;
         iconColor = const Color(0xFF27ae60);
       } else if (notification.type.contains('UPDATE')) {
         iconData = Icons.edit_outlined;
-        iconColor = const Color(0xFF3498db);
+        iconColor = context.primaryColor;
       } else if (notification.type.contains('DELETE')) {
         iconData = Icons.delete_outline;
         iconColor = Colors.red;
       } else {
         iconData = Icons.medical_services;
-        iconColor = const Color(0xFF3498db);
+        iconColor = context.primaryColor;
       }
     } else if (notification.isAppointmentNotification) {
       if (notification.type.contains('BOOKED')) {
         iconData = Icons.calendar_today;
-        iconColor = const Color(0xFF3498db);
+        iconColor = context.primaryColor;
       } else if (notification.type.contains('CONFIRMED')) {
         iconData = Icons.check_circle_outline;
         iconColor = const Color(0xFF27ae60);
@@ -160,12 +167,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         iconColor = Colors.red;
       } else {
         iconData = Icons.event_note;
-        iconColor = const Color(0xFF3498db);
+        iconColor = context.primaryColor;
       }
     } else {
       // Fallback for other notification types
       iconData = Icons.notifications;
-      iconColor = const Color(0xFF3498db);
+      iconColor = context.primaryColor;
     }
 
     return Card(
@@ -175,8 +182,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         borderRadius: BorderRadius.circular(12),
         side: isUnread 
             ? BorderSide.none 
-            : BorderSide(color: Colors.grey[200]!),
+            : BorderSide(color: context.secondaryText.withOpacity(0.2)),
       ),
+      color: context.cardColor,
       child: InkWell(
         onTap: () {
           if (!notification.isRead) {
@@ -187,7 +195,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
-            color: isUnread ? const Color(0xFFe8f4fd) : Colors.white,
+            color: isUnread ? context.primaryColor.withOpacity(0.05) : context.cardColor,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Padding(
@@ -213,7 +221,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         style: TextStyle(
                           fontWeight: isUnread ? FontWeight.bold : FontWeight.w500,
                           fontSize: 15,
-                          color: const Color(0xFF2c3e50),
+                          color: context.primaryText,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -221,7 +229,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         notification.message,
                         style: TextStyle(
                           fontSize: 13,
-                          color: isUnread ? const Color(0xFF5d6d7e) : const Color(0xFF95a5a6),
+                          color: isUnread ? context.primaryText : context.secondaryText,
                           height: 1.3,
                         ),
                         maxLines: 2,
@@ -232,7 +240,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         formattedDate,
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey[500],
+                          color: context.secondaryText.withOpacity(0.7),
                         ),
                       ),
                     ],
@@ -242,8 +250,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF3498db),
+                    decoration: BoxDecoration(
+                      color: context.primaryColor,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -262,9 +270,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.7,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: context.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
@@ -273,7 +281,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: context.secondaryText.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -286,10 +294,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     // Notification Title
                     Text(
                       notification.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF2c3e50),
+                        color: context.primaryText,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -297,30 +305,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       DateFormat('MMM dd, yyyy • hh:mm a').format(notification.createdAt),
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: context.secondaryText,
                       ),
                     ),
-                    const Divider(height: 24),
+                    Divider(height: 24, color: context.secondaryText.withOpacity(0.2)),
                     
                     // Notification Message
                     Text(
                       notification.message,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
-                        color: Color(0xFF5d6d7e),
+                        color: context.primaryText.withOpacity(0.8),
                         height: 1.5,
                       ),
                     ),
                     
-                    // ✅ Health Camp Details Section
+                    // Health Camp Details Section
                     if (notification.isHealthCampNotification && notification.campData != null) ...[
                       const SizedBox(height: 20),
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFf8f9fa),
+                          color: context.cardColor,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFe0e0e0)),
+                          border: Border.all(color: context.secondaryText.withOpacity(0.2)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,12 +341,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   size: 20,
                                 ),
                                 const SizedBox(width: 8),
-                                const Text(
+                                Text(
                                   'Camp Details:',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
-                                    color: Color(0xFF2c3e50),
+                                    color: context.primaryText,
                                   ),
                                 ),
                               ],
@@ -377,15 +385,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     ],
                     
-                    // ✅ Appointment Details Section
+                    // Appointment Details Section
                     if (notification.isAppointmentNotification && notification.appointmentData != null) ...[
                       const SizedBox(height: 20),
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFf8f9fa),
+                          color: context.cardColor,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFe0e0e0)),
+                          border: Border.all(color: context.secondaryText.withOpacity(0.2)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,16 +402,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               children: [
                                 Icon(
                                   Icons.event_note,
-                                  color: const Color(0xFF3498db),
+                                  color: context.primaryColor,
                                   size: 20,
                                 ),
                                 const SizedBox(width: 8),
-                                const Text(
+                                Text(
                                   'Appointment Details:',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
-                                    color: Color(0xFF2c3e50),
+                                    color: context.primaryText,
                                   ),
                                 ),
                               ],
@@ -430,7 +438,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           icon: const Icon(Icons.calendar_month),
                           label: const Text('View My Appointments'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF3498db),
+                            backgroundColor: context.primaryColor,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
@@ -455,11 +463,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    side: const BorderSide(color: Color(0xFF3498db)),
+                    side: BorderSide(color: context.primaryColor),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Close',
-                    style: TextStyle(fontSize: 16, color: Color(0xFF3498db)),
+                    style: TextStyle(fontSize: 16, color: context.primaryColor),
                   ),
                 ),
               ),
@@ -498,20 +506,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             width: 100,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF7f8c8d),
+                color: context.secondaryText,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF2c3e50),
+                color: context.primaryText,
               ),
             ),
           ),

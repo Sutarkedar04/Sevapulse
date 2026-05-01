@@ -1,13 +1,25 @@
+// src/models/Prescription.js
 const mongoose = require('mongoose');
 
 const prescriptionSchema = new mongoose.Schema({
-  appointment: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment', required: true },
-  doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', required: true },
+  appointment: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment', required: false, default: null },
+  doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', required: false, default: null },
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
-  medicines: [{ name: String, dosage: String, frequency: String, duration: String, instructions: String }],
-  tests: [{ name: String, instructions: String }],
-  advice: String,
-  followUpDate: Date,
+  doctorName: { type: String, default: '' }, // For patient-uploaded prescriptions
+  medicines: [{ 
+    name: { type: String, default: '' },
+    dosage: { type: String, default: '' },
+    frequency: { type: String, default: '' },
+    duration: { type: String, default: '' },
+    instructions: { type: String, default: '' }
+  }],
+  tests: [{ 
+    name: { type: String, default: '' }, 
+    instructions: { type: String, default: '' } 
+  }],
+  advice: { type: String, default: '' },
+  followUpDate: { type: Date, default: null },
+  imageUrl: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
 

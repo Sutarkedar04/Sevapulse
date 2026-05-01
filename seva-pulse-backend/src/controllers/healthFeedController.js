@@ -212,6 +212,8 @@ exports.deleteHealthCamp = async (req, res, next) => {
     next(error);
   }
 };
+// src/controllers/healthFeedController.js
+// Update the registerForCamp function to store participant ID
 
 exports.registerForCamp = async (req, res, next) => {
   try {
@@ -224,11 +226,20 @@ exports.registerForCamp = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'No slots available' });
     }
     
+    // Check if already registered
+    if (camp.participants && camp.participants.includes(req.user.id)) {
+      return res.status(400).json({ success: false, message: 'Already registered for this camp' });
+    }
+    
+    // Add participant
     camp.registeredParticipants += 1;
+    if (!camp.participants) camp.participants = [];
+    camp.participants.push(req.user.id);
     await camp.save();
     
     res.status(200).json({ success: true, message: 'Registered successfully', data: camp });
   } catch (error) {
+    console.error('Error in registerForCamp:', error);
     next(error);
   }
 };

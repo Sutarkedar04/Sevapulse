@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 import '../../data/providers/auth_provider.dart';
 import '../../data/models/user_model.dart';
 import '../user/screens/user_home_screen.dart';
@@ -93,10 +94,10 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registration successful!'),
-            backgroundColor: Color(0xFF27ae60),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Text('Registration successful!'),
+            backgroundColor: const Color(0xFF27ae60),
+            duration: const Duration(seconds: 2),
           ),
         );
         
@@ -137,9 +138,10 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: context.backgroundColor,
       appBar: AppBar(
         title: const Text('Create Account'),
-        backgroundColor: const Color(0xFF3498db),
+        backgroundColor: context.primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -154,19 +156,19 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Join Seva Pulse',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2c3e50),
+                  color: context.primaryText,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Create your account to access healthcare services',
                 style: TextStyle(
-                  color: Color(0xFF7f8c8d),
+                  color: context.secondaryText,
                   fontSize: 16,
                 ),
               ),
@@ -175,15 +177,21 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
               // Full Name Field
               TextFormField(
                 controller: _nameController,
+                style: TextStyle(color: context.primaryText),
                 decoration: InputDecoration(
                   labelText: 'Full Name *',
-                  prefixIcon: const Icon(Icons.person, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.person, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                 ),
                 validator: (value) {
@@ -201,16 +209,22 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
               // Email Field
               TextFormField(
                 controller: _emailController,
+                style: TextStyle(color: context.primaryText),
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Email Address *',
-                  prefixIcon: const Icon(Icons.email, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.email, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                 ),
                 validator: (value) {
@@ -228,16 +242,22 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
               // Phone Field
               TextFormField(
                 controller: _phoneController,
+                style: TextStyle(color: context.primaryText),
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
                   labelText: 'Phone Number *',
-                  prefixIcon: const Icon(Icons.phone, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.phone, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                 ),
                 validator: (value) {
@@ -255,18 +275,25 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
               // Date of Birth Field - FIXED with controller
               TextFormField(
                 controller: _dobController,
+                style: TextStyle(color: context.primaryText),
                 readOnly: true,
                 decoration: InputDecoration(
                   labelText: 'Date of Birth (Optional)',
-                  prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.calendar_today, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                   hintText: 'Select your date of birth',
+                  hintStyle: TextStyle(color: context.secondaryText.withOpacity(0.5)),
                 ),
                 onTap: _selectDate,
               ),
@@ -277,13 +304,18 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
                 value: _selectedGender,
                 decoration: InputDecoration(
                   labelText: 'Gender (Optional)',
-                  prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.person_outline, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                 ),
                 items: const [
@@ -307,16 +339,22 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
               // Password Field
               TextFormField(
                 controller: _passwordController,
+                style: TextStyle(color: context.primaryText),
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   labelText: 'Password *',
-                  prefixIcon: const Icon(Icons.lock, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.lock, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                   suffixIcon: IconButton(
                     onPressed: () {
@@ -326,7 +364,7 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
                     },
                     icon: Icon(
                       _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                      color: const Color(0xFF7f8c8d),
+                      color: context.secondaryText,
                     ),
                   ),
                 ),
@@ -345,16 +383,22 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
               // Confirm Password Field
               TextFormField(
                 controller: _confirmPasswordController,
+                style: TextStyle(color: context.primaryText),
                 obscureText: _obscureConfirmPassword,
                 decoration: InputDecoration(
                   labelText: 'Confirm Password *',
-                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.lock_outline, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                   suffixIcon: IconButton(
                     onPressed: () {
@@ -364,7 +408,7 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
                     },
                     icon: Icon(
                       _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
-                      color: const Color(0xFF7f8c8d),
+                      color: context.secondaryText,
                     ),
                   ),
                 ),
@@ -387,7 +431,7 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _registerUser,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3498db),
+                    backgroundColor: context.primaryColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -415,25 +459,25 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
               const SizedBox(height: 20),
 
               // Terms and Conditions
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Text.rich(
                   TextSpan(
                     text: 'By creating an account, you agree to our ',
-                    style: TextStyle(color: Color(0xFF7f8c8d)),
+                    style: TextStyle(color: context.secondaryText),
                     children: [
                       TextSpan(
                         text: 'Terms of Service',
                         style: TextStyle(
-                          color: Color(0xFF3498db),
+                          color: context.primaryColor,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      TextSpan(text: ' and '),
+                      const TextSpan(text: ' and '),
                       TextSpan(
                         text: 'Privacy Policy',
                         style: TextStyle(
-                          color: Color(0xFF3498db),
+                          color: context.primaryColor,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -450,15 +494,15 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
                   onPressed: () {
                     Navigator.pop(context);
                   },
-                  child: const Text.rich(
+                  child: Text.rich(
                     TextSpan(
                       text: 'Already have an account? ',
-                      style: TextStyle(color: Color(0xFF7f8c8d)),
+                      style: TextStyle(color: context.secondaryText),
                       children: [
                         TextSpan(
                           text: 'Sign In',
                           style: TextStyle(
-                            color: Color(0xFF3498db),
+                            color: context.primaryColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

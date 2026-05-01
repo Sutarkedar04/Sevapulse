@@ -1,5 +1,7 @@
+// lib/core/services/socket_service.dart
 import 'dart:async';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import '../constants/api_constants.dart';
 
 class SocketService {
   static final SocketService _instance = SocketService._internal();
@@ -22,26 +24,27 @@ class SocketService {
     }
 
     try {
-      const String serverUrl = 'http://192.168.35.49:5001';
+      // Extract base URL from ApiConstants (remove /api)
+      String baseUrl = ApiConstants.baseUrl.replaceAll('/api', '');
+      print('🔌 Connecting to WebSocket: $baseUrl');
       
-      print('🔌 Connecting to WebSocket: $serverUrl');
-      
-      _socket = IO.io(serverUrl, <String, dynamic>{
+      _socket = IO.io(baseUrl, <String, dynamic>{
         'transports': ['websocket'],
         'autoConnect': true,
         'reconnection': true,
         'reconnectionAttempts': 5,
         'reconnectionDelay': 1000,
+        'forceNew': true,
       });
 
       _socket!.onConnect((_) {
         _isConnected = true;
-        print('✅ WebSocket Connected');
+        print('✅ WebSocket Connected to $baseUrl');
         _socket!.emit('join', [userId, userType]);
         print('📱 Joined room: ${userType}_$userId');
       });
 
-      // ✅ Listen for health camp notifications
+      // Listen for health camp notifications
       _socket!.on('health_camp_notification', (data) {
         print('📢 Received health camp notification: $data');
         if (data is Map) {
@@ -50,7 +53,7 @@ class SocketService {
         }
       });
 
-      // ✅ Listen for appointment/general notifications
+      // Listen for appointment/general notifications
       _socket!.on('notification', (data) {
         print('📢 Received notification: $data');
         if (data is Map) {
@@ -67,6 +70,10 @@ class SocketService {
       _socket!.onConnectError((error) {
         print('❌ WebSocket Connection Error: $error');
         _isConnected = false;
+      });
+
+      _socket!.onError((error) {
+        print('❌ WebSocket error: $error');
       });
 
       _socket!.connect();

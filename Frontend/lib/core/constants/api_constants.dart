@@ -1,7 +1,6 @@
 // lib/core/constants/api_constants.dart
 class ApiConstants {
-  // Use the IP from your backend output
-  static const String baseUrl = 'http://192.168.35.49:5001/api';
+  static const String baseUrl = 'http://10.33.79.50:5001/api';
   
   // Auth endpoints
   static const String register = '$baseUrl/auth/register';
@@ -18,11 +17,17 @@ class ApiConstants {
   // Patients
   static const String patients = '$baseUrl/patients';
   static const String patientDetails = '$baseUrl/patients';
+  static const String updatePatientProfile = '$baseUrl/patients/me';
   
   // Prescriptions
   static const String prescriptions = '$baseUrl/prescriptions';
+  static const String myPrescriptions = '$baseUrl/prescriptions/my';
+  static const String prescriptionUpload = '$baseUrl/prescriptions/upload';
+  static const String doctorCreatePrescription = '$baseUrl/prescriptions/doctor-create';
   static const String patientPrescriptions = '$baseUrl/prescriptions/patient';
   
+  // Add to api_constants.dart
+static const String governmentSchemes = '$baseUrl/government-schemes';
   // Bills
   static const String bills = '$baseUrl/bills';
   

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 import '../../../data/providers/auth_provider.dart';
 import '../doctor/screens/doctor_home_screen.dart';
 import 'doctor_register_screen.dart';
@@ -22,8 +23,8 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController.text = 'pratik12@gmail.com';
-    _passwordController.text = '123456';
+    _emailController.text = 'sachinshinde@gmail.com';
+    _passwordController.text = '12345678';
     _rememberMe = true;
   }
 
@@ -46,18 +47,16 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
       if (success && mounted) {
         authProvider.clearError();
         
-        // Get the logged-in doctor data
         final doctorUser = authProvider.user;
         print('✅ Doctor logged in: ${doctorUser?.name}');
         print('✅ Doctor ID: ${doctorUser?.id}');
         print('✅ Doctor Email: ${doctorUser?.email}');
-        print('✅ Doctor Specialization: ${doctorUser?.specialization}');
         
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login successful!'),
-            backgroundColor: Color(0xFF27ae60),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Text('Login successful!'),
+            backgroundColor: const Color(0xFF27ae60),
+            duration: const Duration(seconds: 2),
           ),
         );
         
@@ -118,13 +117,14 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Forgot Password?'),
-        content: const Text(
+        title: Text('Forgot Password?', style: TextStyle(color: context.primaryText)),
+        content: Text(
           'Please contact the hospital administration to reset your password. '
           'You can reach them at:\n\n'
           '📞 +1 (555) 123-4567\n'
           '📧 admin@hospital.com\n\n'
           'Office Hours: Mon-Fri, 9:00 AM - 5:00 PM',
+          style: TextStyle(color: context.secondaryText),
         ),
         actions: [
           TextButton(
@@ -143,24 +143,24 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Demo Credentials'),
-        content: const Column(
+        title: Text('Demo Credentials', style: TextStyle(color: context.primaryText)),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'For testing purposes, use:',
-              style: TextStyle(fontSize: 16),
+              style: TextStyle(fontSize: 16, color: context.primaryText),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
               '📧 Email: doctor@test.com',
-              style: TextStyle(fontWeight: FontWeight.w500),
+              style: TextStyle(fontWeight: FontWeight.w500, color: context.primaryText),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               '🔑 Password: password',
-              style: TextStyle(fontWeight: FontWeight.w500),
+              style: TextStyle(fontWeight: FontWeight.w500, color: context.primaryText),
             ),
           ],
         ),
@@ -180,7 +180,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -190,7 +190,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2c3e50)),
+                  icon: Icon(Icons.arrow_back, color: context.primaryText),
                   onPressed: () => Navigator.pop(context),
                 ),
                 const SizedBox(height: 20),
@@ -233,20 +233,20 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Welcome Back, Doctor!',
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF2c3e50),
+            color: context.primaryText,
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Sign in to access your medical dashboard',
           style: TextStyle(
             fontSize: 16,
-            color: Color(0xFF7f8c8d),
+            color: context.secondaryText,
           ),
         ),
       ],
@@ -258,24 +258,25 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
       children: [
         TextFormField(
           controller: _emailController,
+          style: TextStyle(color: context.primaryText),
           decoration: InputDecoration(
             labelText: 'Doctor ID / Email',
-            labelStyle: const TextStyle(color: Color(0xFF7f8c8d)),
-            prefixIcon: const Icon(Icons.email, color: Color(0xFF27ae60)),
+            labelStyle: TextStyle(color: context.secondaryText),
+            prefixIcon: Icon(Icons.email, color: const Color(0xFF27ae60)),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFecf0f1)),
+              borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFecf0f1)),
+              borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF27ae60), width: 2),
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.surfaceColor,
           ),
           keyboardType: TextInputType.emailAddress,
           validator: (value) {
@@ -291,28 +292,29 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
         const SizedBox(height: 20),
         TextFormField(
           controller: _passwordController,
+          style: TextStyle(color: context.primaryText),
           decoration: InputDecoration(
             labelText: 'Password',
-            labelStyle: const TextStyle(color: Color(0xFF7f8c8d)),
-            prefixIcon: const Icon(Icons.lock, color: Color(0xFF27ae60)),
+            labelStyle: TextStyle(color: context.secondaryText),
+            prefixIcon: Icon(Icons.lock, color: const Color(0xFF27ae60)),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFecf0f1)),
+              borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFecf0f1)),
+              borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF27ae60), width: 2),
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.surfaceColor,
             suffixIcon: IconButton(
               icon: Icon(
                 _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                color: const Color(0xFF7f8c8d),
+                color: context.secondaryText,
               ),
               onPressed: () {
                 setState(() {
@@ -350,10 +352,10 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                const Text(
+                Text(
                   'Remember me',
                   style: TextStyle(
-                    color: Color(0xFF2c3e50),
+                    color: context.primaryText,
                   ),
                 ),
               ],
@@ -414,20 +416,20 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
         Row(
           children: [
             Expanded(
-              child: Divider(color: Colors.grey[300]),
+              child: Divider(color: context.secondaryText.withOpacity(0.3)),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 'Or continue with',
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: context.secondaryText,
                   fontSize: 14,
                 ),
               ),
             ),
             Expanded(
-              child: Divider(color: Colors.grey[300]),
+              child: Divider(color: context.secondaryText.withOpacity(0.3)),
             ),
           ],
         ),
@@ -460,10 +462,10 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               "Don't have an account?",
               style: TextStyle(
-                color: Color(0xFF7f8c8d),
+                color: context.secondaryText,
               ),
             ),
             const SizedBox(width: 4),
@@ -483,18 +485,19 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
         TextButton(
           onPressed: _showDemoCredentials,
           style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF7f8c8d),
+            foregroundColor: context.secondaryText,
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.info_outline, size: 16),
-              SizedBox(width: 6),
+              Icon(Icons.info_outline, size: 16, color: context.secondaryText),
+              const SizedBox(width: 6),
               Text(
                 'VIEW DEMO CREDENTIALS',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
+                  color: context.secondaryText,
                 ),
               ),
             ],

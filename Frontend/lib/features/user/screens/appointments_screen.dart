@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../data/providers/appointment_provider.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../presentation/common/widgets/appointment_item.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({Key? key}) : super(key: key);
@@ -15,7 +16,6 @@ class AppointmentsScreen extends StatefulWidget {
 
 class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-// upcoming, past, all
 
   @override
   void initState() {
@@ -43,9 +43,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: context.backgroundColor,
       appBar: AppBar(
         title: const Text('My Appointments'),
-        backgroundColor: const Color(0xFF3498db),
+        backgroundColor: context.primaryColor,
         foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
@@ -91,7 +92,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
             ..sort((a, b) => b.date.compareTo(a.date));
           
           if (appointmentProvider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(context.primaryColor),
+              ),
+            );
           }
           
           if (appointmentProvider.error != null) {
@@ -99,12 +104,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  Icon(Icons.error_outline, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
-                  Text(appointmentProvider.error!),
+                  Text(appointmentProvider.error!, style: TextStyle(color: context.secondaryText)),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _loadAppointments,
+                    style: ElevatedButton.styleFrom(backgroundColor: context.primaryColor),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -131,6 +137,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
   }
   
   Widget _buildAppointmentList(List list, {required bool showCancelButton}) {
+    final theme = Theme.of(context);
+    
     if (list.isEmpty) {
       return Center(
         child: Column(
@@ -139,22 +147,22 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
             Icon(
               Icons.event_busy,
               size: 80,
-              color: const Color(0xFFbdc3c7),
+              color: context.secondaryText.withOpacity(0.4),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'No appointments found',
               style: TextStyle(
                 fontSize: 18,
-                color: Color(0xFF7f8c8d),
+                color: context.secondaryText,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Book an appointment to see it here',
               style: TextStyle(
                 fontSize: 14,
-                color: Color(0xFF95a5a6),
+                color: context.secondaryText.withOpacity(0.7),
               ),
             ),
             const SizedBox(height: 20),
@@ -163,7 +171,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                 Navigator.pushNamed(context, '/specialties');
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3498db),
+                backgroundColor: context.primaryColor,
               ),
               child: const Text('Book Appointment'),
             ),
@@ -195,6 +203,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
       ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: context.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,7 +216,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: context.secondaryText.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -212,18 +224,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
             const SizedBox(height: 20),
             Text(
               'Dr. ${appointment.doctorName}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2c3e50),
+                color: context.primaryText,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               appointment.specialty ?? 'General',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
-                color: Color(0xFF3498db),
+                color: context.primaryColor,
               ),
             ),
             const SizedBox(height: 20),
@@ -241,11 +253,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3498db),
+                  backgroundColor: context.primaryColor,
                 ),
                 child: const Text('Close'),
               ),
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -262,16 +275,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
             width: 100,
             child: Text(
               '$label:',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2c3e50),
+                color: context.primaryText,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: Color(0xFF7f8c8d)),
+              style: TextStyle(color: context.secondaryText),
             ),
           ),
         ],

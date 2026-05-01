@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/theme_extensions.dart';
 import 'user_login_screen.dart';
 import 'doctor_login_screen.dart';
 
@@ -8,7 +9,7 @@ class UserSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.backgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -19,32 +20,32 @@ class UserSelectionScreen extends StatelessWidget {
                 Align(
                   alignment: Alignment.topLeft,
                   child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Color(0xFF2c3e50)),
+                    icon: Icon(Icons.arrow_back, color: context.primaryText),
                     onPressed: () => Navigator.pop(context),
                   ),
                 )
               else
-                const SizedBox(height: 20), // Add some space if no back button
+                const SizedBox(height: 20),
               
               const Spacer(flex: 1),
               
               // Title
-              const Text(
+              Text(
                 'Continue As',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2c3e50),
+                  color: context.primaryText,
                 ),
               ),
               
               const SizedBox(height: 10),
               
-              const Text(
+              Text(
                 'Select your role to continue',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Color(0xFF7f8c8d),
+                  color: context.secondaryText,
                 ),
               ),
               
@@ -55,10 +56,11 @@ class UserSelectionScreen extends StatelessWidget {
                 children: [
                   // Patient Card
                   _buildUserTypeCard(
+                    context: context, // ✅ Pass context to the method
                     title: 'Patient',
                     subtitle: 'Book appointments, consult doctors, manage health records',
                     icon: Icons.person,
-                    color: const Color(0xFF3498db),
+                    color: context.primaryColor,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -71,6 +73,7 @@ class UserSelectionScreen extends StatelessWidget {
                   
                   // Doctor Card
                   _buildUserTypeCard(
+                    context: context, // ✅ Pass context to the method
                     title: 'Doctor',
                     subtitle: 'Manage appointments, consult patients, update availability',
                     icon: Icons.medical_services,
@@ -94,6 +97,7 @@ class UserSelectionScreen extends StatelessWidget {
   }
 
   Widget _buildUserTypeCard({
+    required BuildContext context, // ✅ Add context parameter
     required String title,
     required String subtitle,
     required IconData icon,
@@ -103,6 +107,7 @@ class UserSelectionScreen extends StatelessWidget {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      color: context.cardColor,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(15),
@@ -114,7 +119,7 @@ class UserSelectionScreen extends StatelessWidget {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 30),
@@ -135,15 +140,15 @@ class UserSelectionScreen extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                        color: Color(0xFF7f8c8d),
+                      style: TextStyle(
+                        color: context.secondaryText,
                         fontSize: 14,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, color: Color(0xFFbdc3c7), size: 16),
+              Icon(Icons.arrow_forward_ios, color: context.secondaryText.withOpacity(0.5), size: 16),
             ],
           ),
         ),

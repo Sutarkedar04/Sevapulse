@@ -277,14 +277,13 @@ Future<Appointment> updateAppointmentStatusAPI(String id, String status) async {
       rethrow;
     }
   }
-
-  // lib/core/services/appointment_service.dart
-// lib/core/services/appointment_service.dart
-// Update the cancelAppointment method:
+// In appointment_service.dart, update the cancelAppointment method:
 
 Future<void> cancelAppointment(String id) async {
   try {
-    print('🗑️ Cancelling appointment via API: $id');
+    print('🗑️ Service.cancelAppointment called for ID: $id');
+    print('🗑️ URL: ${ApiConstants.appointments}/$id');
+    
     final response = await http.delete(
       Uri.parse('${ApiConstants.appointments}/$id'),
       headers: _getHeaders(),
@@ -296,13 +295,11 @@ Future<void> cancelAppointment(String id) async {
     if (response.statusCode == 200 || response.statusCode == 204) {
       final data = json.decode(response.body);
       if (data['success']) {
-        // Remove from local cache - filter out the cancelled appointment
         final beforeCount = _appointments.length;
         _appointments.removeWhere((a) => a.id == id);
         final afterCount = _appointments.length;
-        print('✅ Appointment cancelled successfully from server');
-        print('   Removed from local cache: ${beforeCount - afterCount} appointment(s) removed');
-        print('   Remaining appointments: ${_appointments.length}');
+        print('✅ Service: Appointment cancelled successfully');
+        print('   Removed from local cache: ${beforeCount - afterCount} appointment(s)');
       } else {
         throw Exception(data['message'] ?? 'Failed to cancel appointment');
       }
@@ -311,7 +308,7 @@ Future<void> cancelAppointment(String id) async {
       throw Exception(data['message'] ?? 'Failed to cancel appointment');
     }
   } catch (e) {
-    print('❌ Error in cancelAppointment: $e');
+    print('❌ Service Error in cancelAppointment: $e');
     rethrow;
   }
 }

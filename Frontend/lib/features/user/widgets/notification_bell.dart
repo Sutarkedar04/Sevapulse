@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:badges/badges.dart' as badges;
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 import '../../../data/providers/notification_provider.dart';
 import '../screens/notifications_screen.dart';
 
@@ -21,12 +22,16 @@ class NotificationBell extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          badgeStyle: const badges.BadgeStyle(
+          badgeStyle: badges.BadgeStyle(
             badgeColor: Colors.red,
-            padding: EdgeInsets.all(4),
+            padding: const EdgeInsets.all(4),
           ),
+          position: badges.BadgePosition.topEnd(top: 8, end: 8),
           child: IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+            icon: Icon(
+              Icons.notifications_outlined,
+              color: Colors.white,
+            ),
             onPressed: () {
               Navigator.push(
                 context,
@@ -35,6 +40,7 @@ class NotificationBell extends StatelessWidget {
                 ),
               );
             },
+            tooltip: 'Notifications',
           ),
         );
       },

@@ -1,6 +1,8 @@
+// lib/presentation/common/widgets/appointment_item.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 import '../../../data/models/appointment_model.dart';
 import '../../../data/providers/appointment_provider.dart';
 
@@ -17,7 +19,6 @@ class AppointmentItem extends StatelessWidget {
   }) : super(key: key);
 
   String _formatDate(DateTime date) {
-    // Convert UTC to local time
     final localDate = date.toLocal();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -67,126 +68,138 @@ class AppointmentItem extends StatelessWidget {
     }
   }
 
-  // lib/shared/widgets/appointment_item.dart
-// Replace the _cancelAppointment method with this:
-
-Future<void> _cancelAppointment(BuildContext context) async {
-  // Show confirmation dialog
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Cancel Appointment'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Are you sure you want to cancel your appointment with:'),
-          const SizedBox(height: 8),
-          Text(
-            'Dr. ${appointment.doctorName}',
-            style: const TextStyle(fontWeight: FontWeight.bold),
+  Future<void> _cancelAppointment(BuildContext context) async {
+    print('=== CANCEL BUTTON PRESSED ===');
+    print('Appointment ID: ${appointment.id}');
+    print('Doctor Name: ${appointment.doctorName}');
+    print('Date: ${appointment.date}');
+    print('Time: ${appointment.time}');
+    
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Cancel Appointment', style: TextStyle(color: context.primaryText)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Are you sure you want to cancel your appointment with:', style: TextStyle(color: context.secondaryText)),
+            const SizedBox(height: 8),
+            Text(
+              'Dr. ${appointment.doctorName}',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: context.primaryText),
+            ),
+            Text('Date: ${DateFormat('EEEE, MMMM d, yyyy').format(appointment.date.toLocal())}', style: TextStyle(color: context.secondaryText)),
+            Text('Time: ${appointment.time}', style: TextStyle(color: context.secondaryText)),
+            const SizedBox(height: 8),
+            const Text(
+              'This action cannot be undone.',
+              style: TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('No, Keep It', style: TextStyle(color: context.primaryColor)),
           ),
-          Text('Date: ${DateFormat('EEEE, MMMM d, yyyy').format(appointment.date.toLocal())}'),
-          Text('Time: ${appointment.time}'),
-          const SizedBox(height: 8),
-          const Text(
-            'This action cannot be undone.',
-            style: TextStyle(color: Colors.red, fontSize: 12),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Yes, Cancel'),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('No, Keep It'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, true),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-          ),
-          child: const Text('Yes, Cancel'),
-        ),
-      ],
-    ),
-  );
-
-  if (confirm != true) return;
-
-  // Check if context is still mounted before showing SnackBar
-  if (!context.mounted) return;
-
-  // Show loading indicator
-  final snackBar = SnackBar(
-    content: Row(
-      children: [
-        const SizedBox(
-          height: 20,
-          width: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text('Cancelling appointment with Dr. ${appointment.doctorName}...'),
-      ],
-    ),
-    backgroundColor: Colors.orange,
-    duration: const Duration(seconds: 5),
-  );
-  ScaffoldMessenger.of(context).showSnackBar(snackBar);
-
-  try {
-    final appointmentProvider = Provider.of<AppointmentProvider>(
-      context,
-      listen: false,
     );
-    
-    print('🔄 Attempting to cancel appointment with ID: ${appointment.id}');
-    final success = await appointmentProvider.cancelAppointment(appointment.id);
-    
-    // Check if context is still mounted before showing result
+
+    if (confirm != true) {
+      print('Cancel confirmation: User chose NOT to cancel');
+      return;
+    }
+
+    print('Cancel confirmation: User confirmed cancellation');
+
     if (!context.mounted) return;
-    
-    // Clear the loading snackbar
-    ScaffoldMessenger.of(context).clearSnackBars();
-    
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Appointment with Dr. ${appointment.doctorName} cancelled successfully'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
+
+    // Show loading indicator
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Cancelling appointment...'),
+          ],
         ),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 5),
+      ),
+    );
+
+    try {
+      final appointmentProvider = Provider.of<AppointmentProvider>(
+        context,
+        listen: false,
       );
-    } else {
+      
+      print('Calling appointmentProvider.cancelAppointment with ID: ${appointment.id}');
+      final success = await appointmentProvider.cancelAppointment(appointment.id);
+      
+      if (!context.mounted) return;
+      
+      ScaffoldMessenger.of(context).clearSnackBars();
+      
+      if (success) {
+        print('✅ Appointment cancelled successfully');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Appointment with Dr. ${appointment.doctorName} cancelled successfully'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        print('❌ Failed to cancel appointment: ${appointmentProvider.error}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(appointmentProvider.error ?? 'Failed to cancel appointment'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Exception while cancelling: $e');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(appointmentProvider.error ?? 'Failed to cancel appointment'),
+          content: Text('Error: ${e.toString().replaceFirst('Exception: ', '')}'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
       );
     }
-  } catch (e) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error: ${e.toString().replaceFirst('Exception: ', '')}'),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
     final localDate = appointment.date.toLocal();
     final isPast = localDate.isBefore(DateTime.now());
     final statusColor = _getStatusColor(appointment.status);
+    final canCancel = showCancelButton && appointment.status == 'pending' && !isPast;
+    
+    print('Building AppointmentItem - ID: ${appointment.id}, canCancel: $canCancel, status: ${appointment.status}, isPast: $isPast');
     
     return InkWell(
       onTap: onTap,
@@ -195,9 +208,9 @@ Future<void> _cancelAppointment(BuildContext context) async {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           border: Border.all(
-            color: isPast ? const Color(0xFFecf0f1) : statusColor.withOpacity(0.3),
+            color: isPast ? context.secondaryText.withOpacity(0.2) : statusColor.withOpacity(0.3),
             width: isPast ? 1 : 1.5,
           ),
           borderRadius: BorderRadius.circular(12),
@@ -227,15 +240,14 @@ Future<void> _cancelAppointment(BuildContext context) async {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Doctor name and specialty
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           'Dr. ${appointment.doctorName}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2c3e50),
+                            color: context.primaryText,
                             fontSize: 16,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -261,8 +273,8 @@ Future<void> _cancelAppointment(BuildContext context) async {
                   const SizedBox(height: 4),
                   Text(
                     appointment.specialty ?? 'General',
-                    style: const TextStyle(
-                      color: Color(0xFF7f8c8d),
+                    style: TextStyle(
+                      color: context.secondaryText,
                       fontSize: 13,
                     ),
                   ),
@@ -274,13 +286,13 @@ Future<void> _cancelAppointment(BuildContext context) async {
                       Icon(
                         Icons.calendar_today,
                         size: 12,
-                        color: const Color(0xFF7f8c8d).withOpacity(0.7),
+                        color: context.secondaryText.withOpacity(0.7),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         _formatDate(appointment.date),
-                        style: const TextStyle(
-                          color: Color(0xFF7f8c8d),
+                        style: TextStyle(
+                          color: context.secondaryText,
                           fontSize: 12,
                         ),
                       ),
@@ -288,13 +300,13 @@ Future<void> _cancelAppointment(BuildContext context) async {
                       Icon(
                         Icons.access_time,
                         size: 12,
-                        color: const Color(0xFF7f8c8d).withOpacity(0.7),
+                        color: context.secondaryText.withOpacity(0.7),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         appointment.time,
-                        style: const TextStyle(
-                          color: Color(0xFF7f8c8d),
+                        style: TextStyle(
+                          color: context.secondaryText,
                           fontSize: 12,
                         ),
                       ),
@@ -309,14 +321,14 @@ Future<void> _cancelAppointment(BuildContext context) async {
                         Icon(
                           Icons.medical_information,
                           size: 12,
-                          color: const Color(0xFF7f8c8d).withOpacity(0.7),
+                          color: context.secondaryText.withOpacity(0.7),
                         ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             appointment.symptoms,
-                            style: const TextStyle(
-                              color: Color(0xFF7f8c8d),
+                            style: TextStyle(
+                              color: context.secondaryText,
                               fontSize: 11,
                             ),
                             maxLines: 1,
@@ -330,8 +342,8 @@ Future<void> _cancelAppointment(BuildContext context) async {
               ),
             ),
             
-            // Cancel button (only for pending appointments)
-            if (showCancelButton && appointment.status == 'pending' && !isPast)
+            // Cancel button (only for pending appointments not in past)
+            if (canCancel)
               IconButton(
                 icon: const Icon(Icons.cancel, color: Colors.red, size: 22),
                 onPressed: () => _cancelAppointment(context),
@@ -345,7 +357,7 @@ Future<void> _cancelAppointment(BuildContext context) async {
               Icon(
                 Icons.chevron_right,
                 size: 20,
-                color: const Color(0xFFbdc3c7),
+                color: context.secondaryText,
               ),
           ],
         ),

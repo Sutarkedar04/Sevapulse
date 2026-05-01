@@ -1,17 +1,20 @@
 // lib/shared/widgets/horizontal_card_carousel.dart
-import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/material.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 
 class HorizontalCardCarousel extends StatefulWidget {
   final List<Map<String, dynamic>> cardData;
   final List<Color> cardColors;
   final Duration autoSlideInterval;
+  final Function(int)? onPageChanged;
 
   const HorizontalCardCarousel({
     Key? key,
     required this.cardData,
     required this.cardColors,
     this.autoSlideInterval = const Duration(seconds: 5),
+    this.onPageChanged,
   }) : super(key: key);
 
   @override
@@ -81,7 +84,7 @@ class _HorizontalCardCarouselState extends State<HorizontalCardCarousel> {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: 260, // Reduced height to prevent overflow
+          height: 280,
           child: NotificationListener<ScrollNotification>(
             onNotification: (ScrollNotification notification) {
               if (notification is ScrollStartNotification) {
@@ -104,6 +107,9 @@ class _HorizontalCardCarouselState extends State<HorizontalCardCarousel> {
                 setState(() {
                   _currentPage = page;
                 });
+                if (widget.onPageChanged != null) {
+                  widget.onPageChanged!(page);
+                }
               },
               itemCount: widget.cardData.length,
               itemBuilder: (context, index) {
@@ -116,7 +122,7 @@ class _HorizontalCardCarouselState extends State<HorizontalCardCarousel> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         // Page Indicators
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -124,29 +130,39 @@ class _HorizontalCardCarouselState extends State<HorizontalCardCarousel> {
             widget.cardData.length,
             (index) => AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: _currentPage == index ? 20 : 6,
-              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              width: _currentPage == index ? 24 : 8,
+              height: 8,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(3),
-                color: _currentPage == index
-                    ? const Color(0xFF3498db)
-                    : const Color(0xFFbdc3c7),
+                borderRadius: BorderRadius.circular(4),
+                gradient: _currentPage == index
+                    ? LinearGradient(
+                        colors: [
+                          widget.cardColors[index % widget.cardColors.length],
+                          widget.cardColors[index % widget.cardColors.length].withOpacity(0.6),
+                        ],
+                      )
+                    : LinearGradient(
+                        colors: [
+                          context.secondaryText.withOpacity(0.3),
+                          context.secondaryText.withOpacity(0.2),
+                        ],
+                      ),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         // Auto-slide controls
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 50,
+              width: 60,
               height: 2,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(1),
-                color: const Color(0xFFecf0f1),
+                color: context.secondaryText.withOpacity(0.2),
               ),
               child: _isAutoSliding
                   ? LayoutBuilder(
@@ -158,7 +174,7 @@ class _HorizontalCardCarouselState extends State<HorizontalCardCarousel> {
                           height: 2,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(1),
-                            color: const Color(0xFF3498db),
+                            color: widget.cardColors[_currentPage % widget.cardColors.length],
                           ),
                         );
                       },
@@ -166,25 +182,37 @@ class _HorizontalCardCarouselState extends State<HorizontalCardCarousel> {
                   : null,
             ),
             const SizedBox(width: 8),
-            IconButton(
-              icon: Icon(
-                _isAutoSliding ? Icons.pause : Icons.play_arrow,
-                size: 14,
-                color: const Color(0xFF7f8c8d),
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: context.surfaceColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                  ),
+                ],
               ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              onPressed: () {
-                setState(() {
-                  if (_isAutoSliding) {
-                    _stopAutoSlide();
-                  } else {
-                    _resumeAutoSlide();
-                    _startAutoSlide();
-                  }
-                });
-              },
-              tooltip: _isAutoSliding ? 'Pause auto-slide' : 'Resume auto-slide',
+              child: IconButton(
+                icon: Icon(
+                  _isAutoSliding ? Icons.pause : Icons.play_arrow,
+                  size: 16,
+                  color: widget.cardColors[_currentPage % widget.cardColors.length],
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  setState(() {
+                    if (_isAutoSliding) {
+                      _stopAutoSlide();
+                    } else {
+                      _resumeAutoSlide();
+                      _startAutoSlide();
+                    }
+                  });
+                },
+                tooltip: _isAutoSliding ? 'Pause auto-slide' : 'Resume auto-slide',
+              ),
             ),
           ],
         ),
@@ -193,6 +221,8 @@ class _HorizontalCardCarouselState extends State<HorizontalCardCarousel> {
   }
 
   Widget _buildCard(Map<String, dynamic> data, Color color, int index) {
+    final theme = Theme.of(context);
+    
     return GestureDetector(
       onTap: () {
         _stopAutoSlide();
@@ -207,144 +237,145 @@ class _HorizontalCardCarouselState extends State<HorizontalCardCarousel> {
         });
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              color,
-              // ignore: deprecated_member_use
-              color.withOpacity(0.85),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              // ignore: deprecated_member_use
-              color: color.withOpacity(0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: color.withOpacity(0.4),
+              blurRadius: 20,
+              spreadRadius: 2,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            children: [
-              // Background pattern
-              Positioned(
-                right: -20,
-                bottom: -20,
-                child: Icon(
-                  data['icon'],
-                  size: 100,
-                  // ignore: deprecated_member_use
-                  color: Colors.white.withOpacity(0.08),
-                ),
+        child: Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  color,
+                  color.withOpacity(0.85),
+                  theme.brightness == Brightness.dark 
+                      ? Colors.grey.shade900.withOpacity(0.95)
+                      : Colors.white.withOpacity(0.95),
+                ],
+                stops: const [0.0, 0.5, 1.0],
               ),
-              // Content
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Top row with icon and page indicator
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            // ignore: deprecated_member_use
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            data['icon'],
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top row with icon and page indicator
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(
+                          data['icon'],
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '${index + 1}/${widget.cardData.length}',
+                          style: const TextStyle(
                             color: Colors.white,
-                            size: 20,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            // ignore: deprecated_member_use
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '${index + 1}/${widget.cardData.length}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // Title
+                  Text(
+                    data['title'],
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      height: 1.2,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black26,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    // Title
-                    Text(
-                      data['title'],
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    // Subtitle
-                    Text(
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+                  // Subtitle
+                  Expanded(
+                    child: Text(
                       data['subtitle'],
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
-                        fontSize: 12,
-                        height: 1.3,
+                        fontSize: 13,
+                        height: 1.4,
                       ),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const Spacer(),
-                    // Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (data['onPressed'] != null) {
-                            data['onPressed'](context);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: color,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          minimumSize: const Size(0, 32),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  const SizedBox(height: 16),
+                  // Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (data['onPressed'] != null) {
+                          data['onPressed'](context);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: color,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Text(
-                          data['buttonText'],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        data['buttonText'],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

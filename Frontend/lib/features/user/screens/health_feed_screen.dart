@@ -6,7 +6,67 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../core/constants/api_constants.dart';
 import '../../../data/providers/auth_provider.dart';
-import '../../../core/services/socket_service.dart'; // ✅ ADD THIS
+import '../../../core/services/socket_service.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
+
+// HealthCamp model class
+class HealthCamp {
+  final String id;
+  final String title;
+  final String organization;
+  final DateTime date;
+  final String time;
+  final String location;
+  final String description;
+  final String imageUrl;
+  final int availableSlots;
+  final int registeredParticipants;
+  final List<String> services;
+  final String contact;
+  final bool isFree;
+  final int? fee;
+  final List<String>? participantIds;
+
+  HealthCamp({
+    required this.id,
+    required this.title,
+    required this.organization,
+    required this.date,
+    required this.time,
+    required this.location,
+    required this.description,
+    required this.imageUrl,
+    required this.availableSlots,
+    required this.registeredParticipants,
+    required this.services,
+    required this.contact,
+    required this.isFree,
+    this.fee,
+    this.participantIds,
+  });
+
+  factory HealthCamp.fromJson(Map<String, dynamic> json) {
+    return HealthCamp(
+      id: json['_id']?.toString() ?? '',
+      title: json['title'] ?? '',
+      organization: json['organization'] ?? '',
+      date: DateTime.parse(json['date']),
+      time: json['time'] ?? '',
+      location: json['location'] ?? '',
+      description: json['description'] ?? '',
+      imageUrl: json['imageUrl'] ?? '',
+      availableSlots: json['availableSlots'] ?? 0,
+      registeredParticipants: json['registeredParticipants'] ?? 0,
+      services: List<String>.from(json['services'] ?? []),
+      contact: json['contact'] ?? '',
+      isFree: json['isFree'] ?? true,
+      fee: json['fee'],
+      participantIds: json['participants'] != null 
+          ? List<String>.from(json['participants'].map((p) => p.toString()))
+          : [],
+    );
+  }
+}
 
 class HealthFeedScreen extends StatefulWidget {
   const HealthFeedScreen({Key? key}) : super(key: key);
@@ -19,53 +79,20 @@ class _HealthFeedScreenState extends State<HealthFeedScreen> {
   List<HealthCamp> _upcomingCamps = [];
   bool _isLoading = true;
   String? _error;
-  final SocketService _socketService = SocketService(); // ✅ ADD THIS
+  final SocketService _socketService = SocketService();
 
   @override
   void initState() {
     super.initState();
     _fetchHealthCamps();
-    _setupRealtimeUpdates(); // ✅ ADD THIS
+    _setupRealtimeUpdates();
   }
 
-  // ✅ ADD THIS METHOD - Listen for real-time camp updates
   void _setupRealtimeUpdates() {
     _socketService.notificationStream.listen((notification) {
-      print('📢 HealthFeedScreen received notification: $notification');
-      
-      // Check if notification is about health camps
       if (notification['type']?.contains('HEALTH_CAMP') == true ||
           notification['campId'] != null) {
-        // Refresh camps when notification received
         _fetchHealthCamps();
-        
-        // Show snackbar about update
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    notification['title'] ?? 'Health Camp Update',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(notification['message'] ?? ''),
-                ],
-              ),
-              backgroundColor: notification['type']?.contains('DELETE') == true 
-                  ? Colors.red 
-                  : const Color(0xFF3498db),
-              duration: const Duration(seconds: 4),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
-        }
       }
     });
   }
@@ -88,8 +115,6 @@ class _HealthFeedScreenState extends State<HealthFeedScreen> {
         return;
       }
 
-      print('📡 Fetching health camps from: ${ApiConstants.healthCamps}');
-
       final response = await http.get(
         Uri.parse(ApiConstants.healthCamps),
         headers: {
@@ -98,38 +123,27 @@ class _HealthFeedScreenState extends State<HealthFeedScreen> {
         },
       ).timeout(const Duration(seconds: 30));
 
-      print('Response status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] && data['data'] != null) {
           final camps = List<Map<String, dynamic>>.from(data['data']);
-          
           setState(() {
             _upcomingCamps = camps.map((camp) => HealthCamp.fromJson(camp)).toList();
             _isLoading = false;
           });
-          
-          print('✅ Loaded ${_upcomingCamps.length} health camps');
         } else {
           setState(() {
             _error = data['message'] ?? 'No health camps found';
             _isLoading = false;
           });
         }
-      } else if (response.statusCode == 401) {
-        setState(() {
-          _error = 'Session expired. Please login again.';
-          _isLoading = false;
-        });
       } else {
         setState(() {
-          _error = 'Failed to load health camps. Status: ${response.statusCode}';
+          _error = 'Failed to load health camps';
           _isLoading = false;
         });
       }
     } catch (e) {
-      print('Error fetching health camps: $e');
       setState(() {
         _error = 'Error: ${e.toString()}';
         _isLoading = false;
@@ -142,17 +156,10 @@ class _HealthFeedScreenState extends State<HealthFeedScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token;
 
-      if (token == null || token.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please login to register'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (token == null) {
+        _showSnackBar('Please login to register', Colors.red);
         return;
       }
-
-      print('📝 Registering for camp: ${camp.id}');
 
       final response = await http.post(
         Uri.parse('${ApiConstants.registerCamp}/${camp.id}/register'),
@@ -162,94 +169,91 @@ class _HealthFeedScreenState extends State<HealthFeedScreen> {
         },
       ).timeout(const Duration(seconds: 30));
 
-      print('Response status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
           await _fetchHealthCamps();
-          _showRegistrationSuccess(camp);
+          _showSnackBar('Registered successfully for ${camp.title}!', Colors.green);
         } else {
-          throw Exception(data['message'] ?? 'Registration failed');
+          _showSnackBar(data['message'] ?? 'Registration failed', Colors.red);
         }
       } else {
-        final data = json.decode(response.body);
-        throw Exception(data['message'] ?? 'Registration failed');
+        _showSnackBar('Registration failed', Colors.red);
       }
     } catch (e) {
-      print('Error registering for camp: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString().replaceFirst('Exception: ', '')}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      _showSnackBar('Registration failed', Colors.red);
     }
   }
 
-  void _showRegistrationSuccess(HealthCamp camp) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Registration Successful!',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'You have registered for ${camp.title}',
-              style: const TextStyle(fontSize: 14),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF27ae60),
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+  Future<void> _cancelRegistration(HealthCamp camp) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Cancel Registration', style: TextStyle(color: context.primaryText)),
+        content: Text('Cancel registration for "${camp.title}"?', style: TextStyle(color: context.secondaryText)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('No', style: TextStyle(color: context.primaryColor))),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes', style: TextStyle(color: Colors.red))),
+        ],
       ),
+    );
+    if (confirm != true) return;
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+      if (token == null) return;
+
+      final response = await http.delete(
+        Uri.parse('${ApiConstants.registerCamp}/${camp.id}/register'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        await _fetchHealthCamps();
+        _showSnackBar('Registration cancelled', Colors.orange);
+      } else {
+        _showSnackBar('Failed to cancel', Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar('Failed to cancel', Colors.red);
+    }
+  }
+
+  bool _isUserRegistered(HealthCamp camp) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.user?.id;
+    return camp.participantIds?.contains(userId) ?? false;
+  }
+
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color, duration: const Duration(seconds: 2)),
     );
   }
 
   @override
   void dispose() {
-    _socketService.dispose(); // ✅ ADD THIS
+    _socketService.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFf8f9fa),
+      backgroundColor: context.backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Health Feed & Camps',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: const Color(0xFF3498db),
+        title: const Text('Health Feed & Camps', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: context.primaryColor,
         foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchHealthCamps,
-            tooltip: 'Refresh',
-          ),
-        ],
+        actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchHealthCamps)],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(context.primaryColor),
+              ),
+            )
           : _error != null
               ? Center(
                   child: Column(
@@ -257,31 +261,20 @@ class _HealthFeedScreenState extends State<HealthFeedScreen> {
                     children: [
                       Icon(Icons.error_outline, size: 64, color: Colors.red),
                       const SizedBox(height: 16),
-                      Text(_error!),
+                      Text(_error!, style: TextStyle(color: context.secondaryText)),
                       const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _fetchHealthCamps,
-                        child: const Text('Retry'),
-                      ),
+                      ElevatedButton(onPressed: _fetchHealthCamps, child: const Text('Retry')),
                     ],
                   ),
                 )
               : _upcomingCamps.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.medical_services, size: 64, color: Color(0xFFbdc3c7)),
-                          SizedBox(height: 16),
-                          Text(
-                            'No health camps available',
-                            style: TextStyle(fontSize: 16, color: Color(0xFF7f8c8d)),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Check back later for upcoming health camps',
-                            style: TextStyle(fontSize: 14, color: Color(0xFF95a5a6)),
-                          ),
+                          Icon(Icons.medical_services, size: 64, color: context.secondaryText.withOpacity(0.4)),
+                          const SizedBox(height: 16),
+                          Text('No health camps available', style: TextStyle(color: context.secondaryText)),
                         ],
                       ),
                     )
@@ -290,11 +283,9 @@ class _HealthFeedScreenState extends State<HealthFeedScreen> {
                         _buildHeaderStats(),
                         Expanded(
                           child: ListView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(12),
                             itemCount: _upcomingCamps.length,
-                            itemBuilder: (context, index) {
-                              return _buildCampCard(_upcomingCamps[index]);
-                            },
+                            itemBuilder: (context, index) => _buildCampCard(_upcomingCamps[index]),
                           ),
                         ),
                       ],
@@ -303,316 +294,166 @@ class _HealthFeedScreenState extends State<HealthFeedScreen> {
   }
 
   Widget _buildHeaderStats() {
-    int freeCamps = _upcomingCamps.where((camp) => camp.isFree).length;
-    int totalSlots = _upcomingCamps.fold(0, (sum, camp) => sum + camp.availableSlots);
-    int registered = _upcomingCamps.fold(0, (sum, camp) => sum + camp.registeredParticipants);
+    int freeCamps = _upcomingCamps.where((c) => c.isFree).length;
+    int totalSlots = _upcomingCamps.fold(0, (s, c) => s + c.availableSlots);
+    int registered = _upcomingCamps.fold(0, (s, c) => s + c.registeredParticipants);
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFF3498db),
-            Color(0xFF2980b9),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: LinearGradient(colors: [Color(0xFF3498db), Color(0xFF2980b9)]),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          const Text(
-            'Upcoming Health Camps',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Join our community health initiatives and wellness programs',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildStatItem('$freeCamps', 'Free Camps', Icons.medical_services),
-              _buildStatItem('$totalSlots', 'Total Slots', Icons.people),
-              _buildStatItem('$registered', 'Registered', Icons.how_to_reg),
-            ],
-          ),
+          _buildStatItem(freeCamps, 'Free', Icons.medical_services),
+          _buildStatItem(totalSlots, 'Slots', Icons.people),
+          _buildStatItem(registered, 'Joined', Icons.how_to_reg),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String value, String label, IconData icon) {
+  Widget _buildStatItem(int count, String label, IconData icon) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(25),
-          ),
-          child: Icon(icon, color: Colors.white, size: 24),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
-        ),
+        Icon(icon, color: Colors.white, size: 18),
+        const SizedBox(height: 2),
+        Text(count.toString(), style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9)),
       ],
     );
   }
 
   Widget _buildCampCard(HealthCamp camp) {
+    final isRegistered = _isUserRegistered(camp);
     final daysLeft = camp.date.difference(DateTime.now()).inDays;
-    final percentageFilled = (camp.registeredParticipants / camp.availableSlots) * 100;
+    final percent = camp.availableSlots > 0 ? (camp.registeredParticipants / camp.availableSlots) * 100 : 0;
 
     return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      color: context.cardColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Image
           Stack(
             children: [
               Container(
-                height: 150,
+                height: 110,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                  color: const Color(0xFF3498db).withOpacity(0.1),
+                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(14), topRight: Radius.circular(14)),
+                  color: context.primaryColor.withOpacity(0.1),
                 ),
                 child: camp.imageUrl.isNotEmpty
                     ? ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          topRight: Radius.circular(16),
-                        ),
-                        child: Image.network(
-                          camp.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: const Color(0xFFecf0f1),
-                              child: const Icon(
-                                Icons.medical_services,
-                                color: Color(0xFFbdc3c7),
-                                size: 50,
-                              ),
-                            );
-                          },
-                        ),
+                        borderRadius: const BorderRadius.only(topLeft: Radius.circular(14), topRight: Radius.circular(14)),
+                        child: Image.network(camp.imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.medical_services, size: 40, color: context.secondaryText)),
                       )
-                    : Container(
-                        color: const Color(0xFFecf0f1),
-                        child: const Icon(
-                          Icons.medical_services,
-                          color: Color(0xFFbdc3c7),
-                          size: 50,
-                        ),
-                      ),
+                    : Icon(Icons.medical_services, size: 40, color: context.secondaryText),
               ),
               Positioned(
-                top: 12,
-                left: 12,
+                top: 8,
+                left: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: camp.isFree ? const Color(0xFF27ae60) : const Color(0xFFe74c3c),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    camp.isFree ? 'FREE' : '₹${camp.fee}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: camp.isFree ? Colors.green : Colors.red, borderRadius: BorderRadius.circular(12)),
+                  child: Text(camp.isFree ? 'FREE' : '₹${camp.fee}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                 ),
               ),
               Positioned(
-                top: 12,
-                right: 12,
+                top: 8,
+                right: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '$daysLeft days left',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(12)),
+                  child: Text('$daysLeft d left', style: const TextStyle(color: Colors.white, fontSize: 10)),
+                ),
+              ),
+              if (isRegistered)
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: Colors.green.withOpacity(0.9), borderRadius: BorderRadius.circular(10)),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle, size: 10, color: Colors.white),
+                        SizedBox(width: 2),
+                        Text('Joined', style: TextStyle(color: Colors.white, fontSize: 9)),
+                      ],
                     ),
                   ),
                 ),
-              ),
             ],
           ),
-          
+          // Content
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  camp.title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2c3e50),
-                  ),
-                ),
+                Text(camp.title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: context.primaryText), maxLines: 1),
                 const SizedBox(height: 4),
-                Text(
-                  'by ${camp.organization}',
-                  style: const TextStyle(
-                    color: Color(0xFF7f8c8d),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                
-                _buildCampDetail(Icons.calendar_today, 
-                  DateFormat('MMM dd, yyyy').format(camp.date)),
-                const SizedBox(height: 8),
-                _buildCampDetail(Icons.access_time, camp.time),
-                const SizedBox(height: 8),
-                _buildCampDetail(Icons.location_on, camp.location),
-                const SizedBox(height: 12),
-                
-                Text(
-                  camp.description,
-                  style: const TextStyle(
-                    color: Color(0xFF5d6d7e),
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 12),
-                
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: camp.services.take(3).map((service) => 
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3498db).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF3498db).withOpacity(0.3)),
-                      ),
-                      child: Text(
-                        service,
-                        style: const TextStyle(
-                          color: Color(0xFF3498db),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ).toList(),
-                ),
-                const SizedBox(height: 12),
-                
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${camp.registeredParticipants}/${camp.availableSlots} registered',
-                          style: const TextStyle(
-                            color: Color(0xFF7f8c8d),
-                            fontSize: 12,
-                          ),
-                        ),
-                        Text(
-                          '${percentageFilled.toStringAsFixed(0)}% filled',
-                          style: TextStyle(
-                            color: percentageFilled > 80 ? const Color(0xFFe74c3c) : const Color(0xFF27ae60),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    LinearProgressIndicator(
-                      value: percentageFilled / 100,
-                      backgroundColor: const Color(0xFFecf0f1),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        percentageFilled > 80 ? const Color(0xFFe74c3c) : const Color(0xFF27ae60),
-                      ),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+                    Icon(Icons.calendar_today, size: 12, color: context.secondaryText),
+                    const SizedBox(width: 4),
+                    Text(DateFormat('MMM dd').format(camp.date), style: TextStyle(fontSize: 11, color: context.secondaryText)),
+                    const SizedBox(width: 12),
+                    Icon(Icons.access_time, size: 12, color: context.secondaryText),
+                    const SizedBox(width: 4),
+                    Expanded(child: Text(camp.time, style: TextStyle(fontSize: 11, color: context.secondaryText), maxLines: 1)),
                   ],
                 ),
-                const SizedBox(height: 16),
-                
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 12, color: context.secondaryText),
+                    const SizedBox(width: 4),
+                    Expanded(child: Text(camp.location, style: TextStyle(fontSize: 11, color: context.secondaryText), maxLines: 1)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: percent / 100,
+                  backgroundColor: context.secondaryText.withOpacity(0.2),
+                  valueColor: const AlwaysStoppedAnimation(Color(0xFF27ae60)),
+                  minHeight: 3,
+                ),
+                const SizedBox(height: 8),
+                Text('${camp.registeredParticipants}/${camp.availableSlots} registered', style: TextStyle(fontSize: 10, color: context.secondaryText)),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => _showCampDetails(camp),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF3498db),
-                          side: const BorderSide(color: Color(0xFF3498db)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          side: BorderSide(color: context.primaryColor),
                         ),
-                        child: const Text('View Details'),
+                        child: Text('Details', style: TextStyle(fontSize: 12, color: context.primaryColor)),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => _registerForCamp(camp),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF27ae60),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text('Register Now'),
-                      ),
+                      child: isRegistered
+                          ? ElevatedButton(
+                              onPressed: () => _cancelRegistration(camp),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 8)),
+                              child: const Text('Cancel', style: TextStyle(fontSize: 12)),
+                            )
+                          : ElevatedButton(
+                              onPressed: () => _registerForCamp(camp),
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF27ae60), padding: const EdgeInsets.symmetric(vertical: 8)),
+                              child: const Text('Register', style: TextStyle(fontSize: 12)),
+                            ),
                     ),
                   ],
                 ),
@@ -621,24 +462,6 @@ class _HealthFeedScreenState extends State<HealthFeedScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildCampDetail(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: const Color(0xFF3498db)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: Color(0xFF5d6d7e),
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -647,332 +470,126 @@ class _HealthFeedScreenState extends State<HealthFeedScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _buildCampDetailsSheet(camp),
-    );
-  }
-
-  Widget _buildCampDetailsSheet(HealthCamp camp) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.9,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.8,
+        decoration: BoxDecoration(
+          color: context.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12, bottom: 8),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: context.secondaryText.withOpacity(0.3), borderRadius: BorderRadius.circular(2)),
             ),
-          ),
-          
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 200,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: const Color(0xFF3498db).withOpacity(0.1),
-                    ),
-                    child: camp.imageUrl.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.network(
-                              camp.imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: const Color(0xFFecf0f1),
-                                  child: const Icon(
-                                    Icons.medical_services,
-                                    color: Color(0xFFbdc3c7),
-                                    size: 60,
-                                  ),
-                                );
-                              },
-                            ),
-                          )
-                        : Container(
-                            color: const Color(0xFFecf0f1),
-                            child: const Icon(
-                              Icons.medical_services,
-                              color: Color(0xFFbdc3c7),
-                              size: 60,
-                            ),
-                          ),
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  Text(
-                    camp.title,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2c3e50),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Organized by ${camp.organization}',
-                    style: const TextStyle(
-                      color: Color(0xFF3498db),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 3,
-                    children: [
-                      _buildDetailCard(Icons.calendar_today, 'Date', 
-                        DateFormat('MMM dd, yyyy').format(camp.date)),
-                      _buildDetailCard(Icons.access_time, 'Time', camp.time),
-                      _buildDetailCard(Icons.location_on, 'Venue', camp.location),
-                      _buildDetailCard(Icons.people, 'Slots', 
-                        '${camp.registeredParticipants}/${camp.availableSlots}'),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  const Text(
-                    'About this Camp',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2c3e50),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    camp.description,
-                    style: const TextStyle(
-                      color: Color(0xFF5d6d7e),
-                      fontSize: 16,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  const Text(
-                    'Services Offered',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2c3e50),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: camp.services.map((service) => 
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3498db).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF3498db).withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          service,
-                          style: const TextStyle(
-                            color: Color(0xFF3498db),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Image
+                    Container(
+                      height: 160,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: context.cardColor,
                       ),
-                    ).toList(),
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  const Text(
-                    'Contact Information',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2c3e50),
+                      child: camp.imageUrl.isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(camp.imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.medical_services, size: 60, color: context.secondaryText)),
+                            )
+                          : Icon(Icons.medical_services, size: 60, color: context.secondaryText),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildContactInfo(camp.contact),
-                  const SizedBox(height: 30),
-                  
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _registerForCamp(camp);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF27ae60),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        camp.isFree ? 'Register for Free' : 'Register - ₹${camp.fee}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    const SizedBox(height: 16),
+                    Text(camp.title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: context.primaryText)),
+                    const SizedBox(height: 4),
+                    Text('by ${camp.organization}', style: TextStyle(color: context.primaryColor, fontSize: 14)),
+                    const SizedBox(height: 16),
+                    // Info chips
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _infoChip(Icons.calendar_today, DateFormat('MMM dd, yyyy').format(camp.date)),
+                        _infoChip(Icons.access_time, camp.time),
+                        _infoChip(Icons.location_on, camp.location),
+                        _infoChip(Icons.people, '${camp.registeredParticipants}/${camp.availableSlots} slots'),
+                        _infoChip(Icons.attach_money, camp.isFree ? 'Free' : '₹${camp.fee}'),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                    const SizedBox(height: 16),
+                    Text('About', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.primaryText)),
+                    const SizedBox(height: 4),
+                    Text(camp.description, style: TextStyle(fontSize: 14, color: context.primaryText.withOpacity(0.8))),
+                    const SizedBox(height: 16),
+                    Text('Services', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.primaryText)),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: camp.services.map((s) => Chip(
+                        label: Text(s, style: TextStyle(fontSize: 12, color: context.primaryText)),
+                        backgroundColor: context.primaryColor.withOpacity(0.1),
+                      )).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Contact', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.primaryText)),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: context.cardColor,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: context.secondaryText.withOpacity(0.2)),
+                      ),
+                      child: Text(camp.contact, style: TextStyle(color: context.primaryText)),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: context.primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('Close'),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildDetailCard(IconData icon, String title, String value) {
+  Widget _infoChip(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFf8f9fa),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFecf0f1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: const Color(0xFF3498db)),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFF7f8c8d),
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Color(0xFF2c3e50),
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContactInfo(String contact) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFf8f9fa),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFecf0f1)),
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.secondaryText.withOpacity(0.2)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.contact_phone, color: Color(0xFF3498db)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'For Registration & Queries',
-                  style: TextStyle(
-                    color: Color(0xFF2c3e50),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  contact,
-                  style: const TextStyle(
-                    color: Color(0xFF3498db),
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          Icon(icon, size: 14, color: context.primaryColor),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 12, color: context.primaryText)),
         ],
       ),
-    );
-  }
-}
-
-// HealthCamp model with fromJson
-class HealthCamp {
-  final String id;
-  final String title;
-  final String organization;
-  final DateTime date;
-  final String time;
-  final String location;
-  final String description;
-  final String imageUrl;
-  final int availableSlots;
-  final int registeredParticipants;
-  final List<String> services;
-  final String contact;
-  final bool isFree;
-  final int? fee;
-
-  HealthCamp({
-    required this.id,
-    required this.title,
-    required this.organization,
-    required this.date,
-    required this.time,
-    required this.location,
-    required this.description,
-    required this.imageUrl,
-    required this.availableSlots,
-    required this.registeredParticipants,
-    required this.services,
-    required this.contact,
-    required this.isFree,
-    this.fee,
-  });
-
-  factory HealthCamp.fromJson(Map<String, dynamic> json) {
-    return HealthCamp(
-      id: json['_id']?.toString() ?? '',
-      title: json['title'] ?? '',
-      organization: json['organization'] ?? '',
-      date: DateTime.parse(json['date']),
-      time: json['time'] ?? '',
-      location: json['location'] ?? '',
-      description: json['description'] ?? '',
-      imageUrl: json['imageUrl'] ?? '',
-      availableSlots: json['availableSlots'] ?? 0,
-      registeredParticipants: json['registeredParticipants'] ?? 0,
-      services: List<String>.from(json['services'] ?? []),
-      contact: json['contact'] ?? '',
-      isFree: json['isFree'] ?? true,
-      fee: json['fee'],
     );
   }
 }

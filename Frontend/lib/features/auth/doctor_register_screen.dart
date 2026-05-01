@@ -1,8 +1,11 @@
+// lib/features/auth/doctor_register_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:seva_pulse/features/doctor/screens/doctor_home_screen.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/models/user_model.dart';
+import '../../../core/services/doctor_service.dart';
 
 class DoctorRegisterScreen extends StatefulWidget {
   const DoctorRegisterScreen({Key? key}) : super(key: key);
@@ -20,9 +23,9 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
   final _phoneController = TextEditingController();
   final _experienceController = TextEditingController();
   final _hospitalController = TextEditingController();
-  
-  // Controller for Date of Birth to prevent rebuild issues
-  final TextEditingController _dobController = TextEditingController();
+  final _consultationFeeController = TextEditingController();
+  final _bioController = TextEditingController();
+  final _dobController = TextEditingController();
   
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -54,23 +57,23 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
   ];
   
   // Qualification options
-  final List<String> _qualifications = [
-    'MBBS',
-    'MD',
-    'MS',
-    'DM',
-    'MCh',
-    'DNB',
-    'FRCS',
-    'MRCP',
-    'Fellowship',
-    'PhD',
+  final List<Map<String, String>> _qualifications = [
+    {'degree': 'MBBS', 'institution': 'Medical College'},
+    {'degree': 'MD', 'institution': 'Medical College'},
+    {'degree': 'MS', 'institution': 'Medical College'},
+    {'degree': 'DM', 'institution': 'Super Specialty'},
+    {'degree': 'MCh', 'institution': 'Super Specialty'},
+    {'degree': 'DNB', 'institution': 'National Board'},
+    {'degree': 'FRCS', 'institution': 'Royal College'},
+    {'degree': 'MRCP', 'institution': 'Royal College'},
+    {'degree': 'Fellowship', 'institution': 'Various'},
+    {'degree': 'PhD', 'institution': 'University'},
   ];
 
   @override
   void initState() {
     super.initState();
-    _dobController.text = 'Select your date of birth';
+    _dobController.text = '';
   }
 
   @override
@@ -82,6 +85,8 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
     _phoneController.dispose();
     _experienceController.dispose();
     _hospitalController.dispose();
+    _consultationFeeController.dispose();
+    _bioController.dispose();
     _dobController.dispose();
     super.dispose();
   }
@@ -90,13 +95,13 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now().subtract(const Duration(days: 365 * 30)),
-      firstDate: DateTime(1900),
+      firstDate: DateTime(1950),
       lastDate: DateTime.now().subtract(const Duration(days: 365 * 25)),
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
-        _dobController.text = '${picked.day}/${picked.month}/${picked.year}';
+        _dobController.text = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
       });
     }
   }
@@ -108,8 +113,8 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
     
     if (_selectedSpecialization == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a specialization'),
+        SnackBar(
+          content: const Text('Please select a specialization'),
           backgroundColor: Colors.red,
         ),
       );
@@ -118,8 +123,8 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
     
     if (_selectedQualifications.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select at least one qualification'),
+        SnackBar(
+          content: const Text('Please select at least one qualification'),
           backgroundColor: Colors.red,
         ),
       );
@@ -133,12 +138,20 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
-      // Format qualifications as a comma-separated string to store in experience field or address
-      // Since User model doesn't have qualification field, we'll combine it with experience
-      final qualificationsString = _selectedQualifications.join(', ');
-      final experienceWithQualification = '${_experienceController.text.trim()} years (${qualificationsString})';
+      // Format qualifications as list of maps
+      final qualificationsList = _selectedQualifications.map((qual) {
+        final qualData = _qualifications.firstWhere(
+          (q) => q['degree'] == qual,
+          orElse: () => {'degree': qual, 'institution': 'Medical College'},
+        );
+        return {
+          'degree': qualData['degree'],
+          'institution': qualData['institution'],
+          'year': DateTime.now().year,
+        };
+      }).toList();
       
-      // Create doctor user object
+      // Create doctor user object with all fields
       final user = User(
         id: '',
         name: _nameController.text.trim(),
@@ -148,7 +161,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
         profileImage: null,
         createdAt: DateTime.now(),
         specialization: _selectedSpecialization,
-        experience: experienceWithQualification, // Store experience + qualifications together
+        experience: _experienceController.text.trim(),
         address: _hospitalController.text.trim(),
         dateOfBirth: _selectedDate,
       );
@@ -156,11 +169,31 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
       final success = await authProvider.register(user, _passwordController.text);
 
       if (success && mounted) {
+        // After successful registration, update doctor profile with additional details
+        final token = authProvider.token;
+        if (token != null) {
+          final doctorService = DoctorService();
+          doctorService.setToken(token);
+          
+          // Update doctor profile with all details
+          await doctorService.updateDoctorProfile({
+            'specialization': _selectedSpecialization,
+            'experience': int.tryParse(_experienceController.text.trim()) ?? 0,
+            'consultationFee': int.tryParse(_consultationFeeController.text.trim()) ?? 500,
+            'qualifications': qualificationsList,
+            'bio': _bioController.text.trim().isEmpty 
+                ? 'Experienced doctor dedicated to patient care.' 
+                : _bioController.text.trim(),
+            'hospital': _hospitalController.text.trim(),
+            'dateOfBirth': _selectedDate?.toIso8601String(),
+          });
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Doctor registration successful!'),
-            backgroundColor: Color(0xFF27ae60),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Text('Doctor registration successful!'),
+            backgroundColor: const Color(0xFF27ae60),
+            duration: const Duration(seconds: 2),
           ),
         );
         
@@ -179,6 +212,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
         );
       }
     } catch (e) {
+      print('Registration error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -197,84 +231,109 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
   }
 
   void _showQualificationDialog() {
-  // Create a temporary list to track selections in the dialog
-  List<String> tempSelected = List.from(_selectedQualifications);
-  
-  showDialog(
-    context: context,
-    builder: (context) {
-      return StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text(
-              'Select Qualifications',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            content: Container(
-              width: double.maxFinite,
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.5,
+    List<String> tempSelected = List.from(_selectedQualifications);
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                'Select Qualifications',
+                style: TextStyle(fontWeight: FontWeight.bold, color: context.primaryText),
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: _qualifications.map((qualification) {
-                    return CheckboxListTile(
-                      title: Text(
-                        qualification,
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      value: tempSelected.contains(qualification),
-                      onChanged: (bool? checked) {
-                        setDialogState(() {
-                          if (checked == true) {
-                            tempSelected.add(qualification);
-                          } else {
-                            tempSelected.remove(qualification);
-                          }
-                        });
-                      },
-                      activeColor: const Color(0xFF3498db),
-                      dense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    );
-                  }).toList(),
+              content: Container(
+                width: double.maxFinite,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.5,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _qualifications.map((qualification) {
+                      final degree = qualification['degree']!;
+                      return CheckboxListTile(
+                        title: Text(
+                          degree,
+                          style: TextStyle(fontSize: 14, color: context.primaryText),
+                        ),
+                        subtitle: Text(
+                          qualification['institution']!,
+                          style: TextStyle(fontSize: 12, color: context.secondaryText),
+                        ),
+                        value: tempSelected.contains(degree),
+                        onChanged: (bool? checked) {
+                          setDialogState(() {
+                            if (checked == true) {
+                              tempSelected.add(degree);
+                            } else {
+                              tempSelected.remove(degree);
+                            }
+                          });
+                        },
+                        activeColor: context.primaryColor,
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _selectedQualifications = List.from(tempSelected);
-                  });
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF27ae60),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text('Cancel', style: TextStyle(color: context.primaryColor)),
                 ),
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedQualifications = List.from(tempSelected);
+                    });
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF27ae60),
+                  ),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: context.primaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: context.primaryColor.withOpacity(0.3)),
+      ),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: context.primaryText,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: context.backgroundColor,
       appBar: AppBar(
         title: const Text('Doctor Registration'),
-        backgroundColor: const Color(0xFF3498db),
+        backgroundColor: context.primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -288,21 +347,20 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Join as Doctor',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2c3e50),
+                  color: context.primaryText,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Create your doctor account to manage patients and appointments',
                 style: TextStyle(
-                  color: Color(0xFF7f8c8d),
+                  color: context.secondaryText,
                   fontSize: 16,
                 ),
               ),
@@ -315,15 +373,21 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
               // Name Field
               TextFormField(
                 controller: _nameController,
+                style: TextStyle(color: context.primaryText),
                 decoration: InputDecoration(
                   labelText: 'Full Name *',
-                  prefixIcon: const Icon(Icons.person, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.person, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                 ),
                 validator: (value) {
@@ -341,16 +405,22 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
               // Email Field
               TextFormField(
                 controller: _emailController,
+                style: TextStyle(color: context.primaryText),
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Email Address *',
-                  prefixIcon: const Icon(Icons.email, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.email, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                 ),
                 validator: (value) {
@@ -368,16 +438,22 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
               // Phone Field
               TextFormField(
                 controller: _phoneController,
+                style: TextStyle(color: context.primaryText),
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
                   labelText: 'Phone Number *',
-                  prefixIcon: const Icon(Icons.phone, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.phone, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                 ),
                 validator: (value) {
@@ -392,21 +468,28 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Date of Birth Field - FIXED with controller
+              // Date of Birth Field
               TextFormField(
                 controller: _dobController,
+                style: TextStyle(color: context.primaryText),
                 readOnly: true,
                 decoration: InputDecoration(
                   labelText: 'Date of Birth (Optional)',
-                  prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.calendar_today, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
                   ),
-                  hintText: 'Select your date of birth',
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
+                  ),
+                  hintText: 'YYYY-MM-DD',
+                  hintStyle: TextStyle(color: context.secondaryText.withOpacity(0.5)),
                 ),
                 onTap: _selectDate,
               ),
@@ -421,20 +504,25 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                 value: _selectedSpecialization,
                 decoration: InputDecoration(
                   labelText: 'Specialization *',
-                  prefixIcon: const Icon(Icons.medical_services, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.medical_services, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                   hintText: 'Select your specialization',
                 ),
                 items: _specializations.map((String specialization) {
                   return DropdownMenuItem<String>(
                     value: specialization,
-                    child: Text(specialization),
+                    child: Text(specialization, style: TextStyle(color: context.primaryText)),
                   );
                 }).toList(),
                 onChanged: (String? newValue) {
@@ -451,18 +539,18 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Qualifications Dropdown
+              // Qualifications Selection
               InkWell(
                 onTap: _showQualificationDialog,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(color: context.secondaryText.withOpacity(0.3)),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.school, color: Color(0xFF3498db)),
+                      Icon(Icons.school, color: context.primaryColor),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -472,7 +560,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                               'Qualifications *',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey.shade600,
+                                color: context.secondaryText,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -483,14 +571,14 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                               style: TextStyle(
                                 fontSize: 14,
                                 color: _selectedQualifications.isEmpty
-                                    ? Colors.grey.shade500
-                                    : Colors.black87,
+                                    ? context.secondaryText.withOpacity(0.5)
+                                    : context.primaryText,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.arrow_drop_down, color: Color(0xFF3498db)),
+                      Icon(Icons.arrow_drop_down, color: context.primaryColor),
                     ],
                   ),
                 ),
@@ -500,16 +588,22 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
               // Experience Field
               TextFormField(
                 controller: _experienceController,
+                style: TextStyle(color: context.primaryText),
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Years of Experience *',
-                  prefixIcon: const Icon(Icons.work, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.work, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                   hintText: 'e.g., 5',
                 ),
@@ -528,15 +622,21 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
               // Hospital/Clinic Field
               TextFormField(
                 controller: _hospitalController,
+                style: TextStyle(color: context.primaryText),
                 decoration: InputDecoration(
                   labelText: 'Hospital/Clinic *',
-                  prefixIcon: const Icon(Icons.local_hospital, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.local_hospital, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                   hintText: 'e.g., City Heart Center',
                 ),
@@ -547,6 +647,66 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                   return null;
                 },
               ),
+              const SizedBox(height: 20),
+
+              // Consultation Fee Field
+              TextFormField(
+                controller: _consultationFeeController,
+                style: TextStyle(color: context.primaryText),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Consultation Fee (₹) *',
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.currency_rupee, color: context.primaryColor),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
+                  ),
+                  hintText: 'e.g., 500',
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter consultation fee';
+                  }
+                  if (int.tryParse(value) == null) {
+                    return 'Please enter a valid number';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Bio Field
+              TextFormField(
+                controller: _bioController,
+                style: TextStyle(color: context.primaryText),
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Bio / About (Optional)',
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.description, color: context.primaryColor),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
+                  ),
+                  hintText: 'Tell patients about yourself, your expertise, and approach to care...',
+                  alignLabelWithHint: true,
+                ),
+              ),
               const SizedBox(height: 30),
 
               // Security Section
@@ -556,16 +716,22 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
               // Password Field
               TextFormField(
                 controller: _passwordController,
+                style: TextStyle(color: context.primaryText),
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   labelText: 'Password *',
-                  prefixIcon: const Icon(Icons.lock, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.lock, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                   suffixIcon: IconButton(
                     onPressed: () {
@@ -575,7 +741,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                     },
                     icon: Icon(
                       _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                      color: const Color(0xFF7f8c8d),
+                      color: context.secondaryText,
                     ),
                   ),
                 ),
@@ -594,16 +760,22 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
               // Confirm Password Field
               TextFormField(
                 controller: _confirmPasswordController,
+                style: TextStyle(color: context.primaryText),
                 obscureText: _obscureConfirmPassword,
                 decoration: InputDecoration(
                   labelText: 'Confirm Password *',
-                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF3498db)),
+                  labelStyle: TextStyle(color: context.secondaryText),
+                  prefixIcon: Icon(Icons.lock_outline, color: context.primaryColor),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF3498db)),
+                    borderSide: BorderSide(color: context.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
                   ),
                   suffixIcon: IconButton(
                     onPressed: () {
@@ -613,7 +785,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                     },
                     icon: Icon(
                       _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
-                      color: const Color(0xFF7f8c8d),
+                      color: context.secondaryText,
                     ),
                   ),
                 ),
@@ -664,25 +836,25 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
               const SizedBox(height: 20),
 
               // Terms and Conditions
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Text.rich(
                   TextSpan(
                     text: 'By creating an account, you agree to our ',
-                    style: TextStyle(color: Color(0xFF7f8c8d)),
+                    style: TextStyle(color: context.secondaryText),
                     children: [
                       TextSpan(
                         text: 'Terms of Service',
                         style: TextStyle(
-                          color: Color(0xFF3498db),
+                          color: context.primaryColor,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      TextSpan(text: ' and '),
+                      const TextSpan(text: ' and '),
                       TextSpan(
                         text: 'Privacy Policy',
                         style: TextStyle(
-                          color: Color(0xFF3498db),
+                          color: context.primaryColor,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -699,15 +871,15 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                   onPressed: () {
                     Navigator.pop(context);
                   },
-                  child: const Text.rich(
+                  child: Text.rich(
                     TextSpan(
                       text: 'Already have an account? ',
-                      style: TextStyle(color: Color(0xFF7f8c8d)),
+                      style: TextStyle(color: context.secondaryText),
                       children: [
                         TextSpan(
                           text: 'Sign In',
                           style: TextStyle(
-                            color: Color(0xFF3498db),
+                            color: context.primaryColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -718,26 +890,6 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF3498db).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF3498db).withOpacity(0.3)),
-      ),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF2c3e50),
         ),
       ),
     );

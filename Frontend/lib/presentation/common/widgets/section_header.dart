@@ -1,5 +1,6 @@
 // lib/presentation/common/widgets/section_header.dart
 import 'package:flutter/material.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 
 class SectionHeader extends StatelessWidget {
   final String title;
@@ -23,15 +24,15 @@ class SectionHeader extends StatelessWidget {
         Row(
           children: [
             if (icon != null) ...[
-              Icon(icon, color: const Color(0xFF3498db), size: 20),
+              Icon(icon, color: context.primaryColor, size: 20),
               const SizedBox(width: 8),
             ],
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2c3e50),
+                color: context.primaryText,
               ),
             ),
           ],
@@ -39,10 +40,10 @@ class SectionHeader extends StatelessWidget {
         if (showSeeAll && onSeeAll != null)
           TextButton(
             onPressed: onSeeAll,
-            child: const Text(
+            child: Text(
               'See All',
               style: TextStyle(
-                color: Color(0xFF3498db),
+                color: context.primaryColor,
                 fontWeight: FontWeight.w500,
               ),
             ),

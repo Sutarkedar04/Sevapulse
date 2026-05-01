@@ -22,7 +22,7 @@ class NotificationProvider with ChangeNotifier {
   }
 
   Future<void> fetchNotifications() async {
-    if (_token == null) return;
+    if (_isLoading) return;
     
     _isLoading = true;
     _error = null;

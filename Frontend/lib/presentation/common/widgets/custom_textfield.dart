@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 
 class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -41,18 +42,21 @@ class CustomTextField extends StatelessWidget {
       validator: validator,
       onChanged: onChanged,
       onTap: onTap,
+      style: TextStyle(color: context.primaryText),
       decoration: InputDecoration(
         labelText: labelText,
+        labelStyle: TextStyle(color: context.secondaryText),
         hintText: hintText,
+        hintStyle: TextStyle(color: context.secondaryText.withOpacity(0.7)),
         prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFbdc3c7)),
+          borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFbdc3c7)),
+          borderSide: BorderSide(color: context.secondaryText.withOpacity(0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -63,7 +67,9 @@ class CustomTextField extends StatelessWidget {
           borderSide: const BorderSide(color: Colors.red),
         ),
         filled: true,
-        fillColor: enabled ? Colors.white : const Color(0xFFecf0f1),
+        fillColor: enabled  
+            ? context.surfaceColor 
+            : context.surfaceColor.withOpacity(0.7),
       ),
     );
   }

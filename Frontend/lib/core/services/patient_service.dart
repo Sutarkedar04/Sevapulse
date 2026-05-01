@@ -54,6 +54,29 @@ class PatientService {
     }
   }
 
+  // ✅ NEW: Get patient by ID (for doctors to view patient details)
+  Future<Map<String, dynamic>> getPatientById(String patientId) async {
+    try {
+      print('📡 Fetching patient by ID: $patientId');
+      final response = await http.get(
+        Uri.parse('${ApiConstants.patients}/$patientId'),
+        headers: _getHeaders(),
+      ).timeout(const Duration(seconds: 30));
+
+      final data = await _handleResponse(response);
+      
+      if (data['success'] && data['data'] != null) {
+        print('✅ Patient fetched successfully');
+        return data['data'];
+      }
+      print('⚠️ No patient data found for ID: $patientId');
+      return {};
+    } catch (e) {
+      print('❌ Error getting patient by ID: $e');
+      return {};
+    }
+  }
+
   // Update current patient profile
   Future<Map<String, dynamic>> updatePatientProfile(Map<String, dynamic> profileData) async {
     try {
@@ -77,10 +100,5 @@ class PatientService {
       print('❌ Error updating patient profile: $e');
       rethrow;
     }
-  }
-
-  // Legacy method for compatibility
-  Future<Map<String, dynamic>> getPatientProfile() async {
-    return getCurrentPatientProfile();
   }
 }

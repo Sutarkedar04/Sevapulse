@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
+import '../../../core/theme/theme_extensions.dart'; // ✅ ADD THEME EXTENSION
 
 class CanteenCard extends StatefulWidget {
   final VoidCallback onViewMenu;
@@ -19,11 +20,9 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
   late Animation<double> _scaleAnimation;
   bool _isHovered = false;
 
-  // Canteen contact number
   final String _canteenPhoneNumber = '+919623744227';
   final String _canteenWhatsApp = '919623744227';
 
-  // Sample menu items for preview - THIS WAS MISSING
   final List<Map<String, dynamic>> _previewItems = [
     {'name': 'Masala Dosa', 'price': '₹60', 'icon': Icons.restaurant},
     {'name': 'Idli Sambar', 'price': '₹40', 'icon': Icons.breakfast_dining},
@@ -51,11 +50,9 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
 
   bool get _isSimulator {
     if (Platform.isIOS) {
-      // iOS Simulator check
       return Platform.environment.containsKey('SIMULATOR_DEVICE_NAME');
     }
     if (Platform.isAndroid) {
-      // Android emulator check
       return Platform.environment.containsKey('ANDROID_EMULATOR');
     }
     return false;
@@ -66,17 +63,14 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
       _showSimulatorWarning();
       return;
     }
-
     final Uri phoneUri = Uri(scheme: 'tel', path: _canteenPhoneNumber);
     try {
-      final bool canLaunch = await canLaunchUrl(phoneUri);
-      if (canLaunch) {
+      if (await canLaunchUrl(phoneUri)) {
         await launchUrl(phoneUri);
       } else {
         _showErrorSnackBar('Phone calls are not supported on this device');
       }
     } catch (e) {
-      print('Phone call error: $e');
       _showErrorSnackBar('Could not place call. Please dial $_canteenPhoneNumber manually.');
     }
   }
@@ -86,18 +80,16 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
       _showSimulatorWarning();
       return;
     }
-
-    final String whatsappUrl = 'https://wa.me/$_canteenWhatsApp?text=Hello,%20I%20would%20like%20to%20know%20about%20your%20canteen%20menu.';
-    final Uri whatsappUri = Uri.parse(whatsappUrl);
+    final Uri whatsappUri = Uri.parse(
+      'https://wa.me/$_canteenWhatsApp?text=Hello,%20I%20would%20like%20to%20know%20about%20your%20canteen%20menu.',
+    );
     try {
-      final bool canLaunch = await canLaunchUrl(whatsappUri);
-      if (canLaunch) {
+      if (await canLaunchUrl(whatsappUri)) {
         await launchUrl(whatsappUri);
       } else {
         _showErrorSnackBar('WhatsApp is not installed on this device');
       }
     } catch (e) {
-      print('WhatsApp error: $e');
       _showErrorSnackBar('Could not open WhatsApp. Please contact us at $_canteenPhoneNumber');
     }
   }
@@ -106,26 +98,26 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Simulator Mode'),
+        title: Text('Simulator Mode', style: TextStyle(color: context.primaryText)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Phone calls are not supported on simulators/emulators.'),
+            Text('Phone calls are not supported on simulators/emulators.', style: TextStyle(color: context.secondaryText)),
             const SizedBox(height: 12),
             Text(
               'To contact the canteen:\n\n'
               '📞 Phone: $_canteenPhoneNumber\n'
               '💬 WhatsApp: $_canteenPhoneNumber\n\n'
               'Please use a real device to test calling functionality.',
-              style: const TextStyle(fontSize: 14),
+              style: TextStyle(fontSize: 14, color: context.secondaryText),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: Text('OK', style: TextStyle(color: context.primaryColor)),
           ),
         ],
       ),
@@ -159,22 +151,20 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: context.secondaryText.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Contact Canteen',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2c3e50),
+                color: context.primaryText,
               ),
             ),
             const SizedBox(height: 20),
-            
-            // Phone Call Option
             ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(10),
@@ -184,9 +174,9 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                 ),
                 child: const Icon(Icons.phone, color: Color(0xFF27ae60)),
               ),
-              title: const Text('Call Canteen'),
-              subtitle: Text(_canteenPhoneNumber),
-              trailing: _isSimulator 
+              title: Text('Call Canteen', style: TextStyle(color: context.primaryText)),
+              subtitle: Text(_canteenPhoneNumber, style: TextStyle(color: context.secondaryText)),
+              trailing: _isSimulator
                   ? Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -195,10 +185,7 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                       ),
                       child: const Text(
                         'Simulator',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.orange,
-                        ),
+                        style: TextStyle(fontSize: 10, color: Colors.orange),
                       ),
                     )
                   : null,
@@ -207,8 +194,6 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                 _makePhoneCall();
               },
             ),
-            
-            // WhatsApp Option
             ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(10),
@@ -218,22 +203,18 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                 ),
                 child: const Icon(Icons.message, color: Color(0xFF25D366)),
               ),
-              title: const Text('WhatsApp'),
-              subtitle: const Text('Chat with canteen staff'),
-              trailing: _isSimulator 
+              title: Text('WhatsApp', style: TextStyle(color: context.primaryText)),
+              subtitle: Text('Chat with canteen staff', style: TextStyle(color: context.secondaryText)),
+              trailing: _isSimulator
                   ? Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        // ignore: deprecated_member_use
                         color: Colors.orange.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
                         'Simulator',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.orange,
-                        ),
+                        style: TextStyle(fontSize: 10, color: Colors.orange),
                       ),
                     )
                   : null,
@@ -242,24 +223,21 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                 _sendWhatsApp();
               },
             ),
-            
             const Divider(),
-            
-            // Show number for manual dialing on simulator
             if (_isSimulator) ...[
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       '📱 On a real device, you can call directly.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 12, color: context.secondaryText),
                     ),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFf8f9fa),
+                        color: context.cardColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -279,15 +257,14 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'You can manually dial this number',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 12, color: context.secondaryText),
                     ),
                   ],
                 ),
               ),
             ],
-            
             const SizedBox(height: 20),
           ],
         ),
@@ -316,12 +293,13 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
+              color: context.cardColor,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header Section with Gradient
+                    // Header Section
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -329,9 +307,7 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            // ignore: deprecated_member_use
                             const Color(0xFFe67e22).withOpacity(0.1),
-                            // ignore: deprecated_member_use
                             const Color(0xFFf39c12).withOpacity(0.05),
                           ],
                         ),
@@ -347,7 +323,6 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  // ignore: deprecated_member_use
                                   color: const Color(0xFFe67e22).withOpacity(0.3),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
@@ -365,12 +340,12 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Hospital Canteen',
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2c3e50),
+                                    color: context.primaryText,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -411,11 +386,14 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                               ],
                             ),
                           ),
+                          // View Menu Button
                           ElevatedButton(
                             onPressed: widget.onViewMenu,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFe67e22),
                               foregroundColor: Colors.white,
+                              minimumSize: const Size(0, 36),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -444,7 +422,7 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                       ),
                     ),
 
-                    // Image Section with Overlay
+                    // Image Section
                     Stack(
                       children: [
                         Container(
@@ -465,7 +443,6 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                                 end: Alignment.bottomCenter,
                                 colors: [
                                   Colors.transparent,
-                                  // ignore: deprecated_member_use
                                   Colors.black.withOpacity(0.5),
                                 ],
                               ),
@@ -481,7 +458,6 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              // ignore: deprecated_member_use
                               color: Colors.black.withOpacity(0.7),
                               borderRadius: BorderRadius.circular(20),
                             ),
@@ -509,13 +485,13 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                       ],
                     ),
 
-                    // Menu Preview Section
+                    // Menu Preview & Contact Section
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
@@ -523,14 +499,14 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF2c3e50),
+                                  color: context.primaryText,
                                 ),
                               ),
                               Text(
                                 'See all →',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFFe67e22),
+                                  color: const Color(0xFFe67e22),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -542,43 +518,37 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
                               itemCount: _previewItems.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(width: 12),
+                              separatorBuilder: (_, __) => const SizedBox(width: 12),
                               itemBuilder: (context, index) {
                                 final item = _previewItems[index];
                                 return Container(
                                   width: 100,
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFf8f9fa),
+                                    color: context.surfaceColor,
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: const Color(0xFFecf0f1),
-                                    ),
+                                    border: Border.all(color: context.secondaryText.withOpacity(0.2)),
                                   ),
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(
-                                        item['icon'],
-                                        size: 24,
-                                        color: const Color(0xFFe67e22),
-                                      ),
+                                      Icon(item['icon'], size: 24, color: const Color(0xFFe67e22)),
                                       const SizedBox(height: 4),
                                       Text(
                                         item['name'],
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w500,
+                                          color: context.primaryText,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       Text(
                                         item['price'],
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 10,
-                                          color: Color(0xFF7f8c8d),
+                                          color: context.secondaryText,
                                         ),
                                       ),
                                     ],
@@ -588,49 +558,31 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                             ),
                           ),
                           const SizedBox(height: 16),
-                          // Description
-                          const Text(
+                          Text(
                             'Enjoy delicious and nutritious meals prepared fresh daily. Our canteen offers a variety of healthy options for patients and visitors.',
                             style: TextStyle(
-                              color: Color(0xFF7f8c8d),
+                              color: context.secondaryText,
                               fontSize: 13,
                               height: 1.4,
                             ),
                           ),
                           const SizedBox(height: 12),
-                          // Info Row
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: [
-                                _buildInfoChip(
-                                  Icons.access_time,
-                                  '7:00 AM - 9:00 PM',
-                                  const Color(0xFFe67e22),
-                                ),
+                                _buildInfoChip(Icons.access_time, '7:00 AM - 9:00 PM', const Color(0xFFe67e22)),
                                 const SizedBox(width: 8),
-                                _buildInfoChip(
-                                  Icons.local_shipping,
-                                  'Free Delivery',
-                                  const Color(0xFF27ae60),
-                                ),
+                                _buildInfoChip(Icons.local_shipping, 'Free Delivery', const Color(0xFF27ae60)),
                                 const SizedBox(width: 8),
-                                _buildInfoChip(
-                                  Icons.credit_card,
-                                  'UPI/Card',
-                                  const Color(0xFF3498db),
-                                ),
+                                _buildInfoChip(Icons.credit_card, 'UPI/Card', const Color(0xFF3498db)),
                                 const SizedBox(width: 8),
-                                _buildInfoChip(
-                                  Icons.room_service,
-                                  'Dine-in',
-                                  const Color(0xFF9b59b6),
-                                ),
+                                _buildInfoChip(Icons.room_service, 'Dine-in', const Color(0xFF9b59b6)),
                               ],
                             ),
                           ),
                           const SizedBox(height: 16),
-                          // Contact Button
+                          // Contact button
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
@@ -640,6 +592,7 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFe67e22),
                                 foregroundColor: Colors.white,
+                                minimumSize: const Size(0, 48),
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -664,7 +617,6 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        // ignore: deprecated_member_use
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
       ),
@@ -675,11 +627,7 @@ class _CanteenCardState extends State<CanteenCard> with SingleTickerProviderStat
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              color: color,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500),
           ),
         ],
       ),

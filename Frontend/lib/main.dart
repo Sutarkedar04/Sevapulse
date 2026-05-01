@@ -1,13 +1,18 @@
+// lib/main.dart - Remove the GovernmentSchemeProvider
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:seva_pulse/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/constants/api_constants.dart';
-//import 'core/services/push_notification_service.dart'; // ✅ ADD THIS
 import 'data/providers/auth_provider.dart';
 import 'data/providers/appointment_provider.dart';
 import 'data/providers/theme_provider.dart';
 import 'data/providers/medicine_provider.dart';
 import 'data/providers/notification_provider.dart';
+import 'data/providers/prescription_provider.dart';
+// REMOVE THIS LINE: import 'data/providers/government_scheme_provider.dart';
+import 'core/services/chatbot_service.dart';
 import 'features/auth/SevaPulseSplashScreen.dart';
 import 'features/user/screens/user_home_screen.dart';
 import 'features/auth/user_login_screen.dart';
@@ -27,9 +32,21 @@ void main() async {
   print('🚀 Starting Seva Pulse App...');
   print('📡 Using backend URL: ${ApiConstants.baseUrl}');
   
-  // ✅ Initialize push notifications
-  //await PushNotificationService().initialize();
-  //print('✅ Push Notification Service initialized');
+  try {
+    await dotenv.load();
+    print('✅ .env file loaded successfully');
+  } catch (e) {
+    print('⚠️ Error loading .env file: $e');
+  }
+  
+  final geminiApiKey = dotenv.env['GEMINI_API_KEY'];
+  if (geminiApiKey != null && geminiApiKey.isNotEmpty && geminiApiKey != 'YOUR_ACTUAL_API_KEY_HERE') {
+    print('✅ Gemini API Key found, initializing chatbot...');
+    ChatbotService.initialize(apiKey: geminiApiKey);
+  } else {
+    print('⚠️ Gemini API Key not found. Chatbot will use fallback responses.');
+    ChatbotService.initialize(apiKey: '');
+  }
   
   final prefs = await SharedPreferences.getInstance();
   print('✅ SharedPreferences initialized');
@@ -64,13 +81,20 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<NotificationProvider>(
           create: (context) => NotificationProvider(),
         ),
+        ChangeNotifierProvider<PrescriptionProvider>(
+          create: (context) => PrescriptionProvider(),
+        ),
+        // REMOVE THIS LINE: ChangeNotifierProvider<GovernmentSchemeProvider>(
+        // REMOVE THIS LINE:   create: (context) => GovernmentSchemeProvider(),
+        // REMOVE THIS LINE: ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
             title: 'SEVA PULSE',
-            theme: themeProvider.currentTheme,
-            initialRoute: '/',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
             debugShowCheckedModeBanner: false,
             home: const AuthWrapper(),
             routes: {
@@ -109,15 +133,18 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+      final prescriptionProvider = Provider.of<PrescriptionProvider>(context, listen: false);
+      // REMOVE THIS LINE: final schemeProvider = Provider.of<GovernmentSchemeProvider>(context, listen: false);
       
       print('🔐 AuthWrapper init - isAuthenticated: ${authProvider.isAuthenticated}');
       print('🔐 AuthWrapper init - user: ${authProvider.user?.name}');
       
       if (authProvider.isAuthenticated && authProvider.user != null) {
-        // Set token for API calls
         if (authProvider.token != null) {
           notificationProvider.setToken(authProvider.token!);
           notificationProvider.fetchNotifications();
+          prescriptionProvider.setToken(authProvider.token!);
+          // REMOVE THIS LINE: schemeProvider.setToken(authProvider.token!);
         }
       }
     });
@@ -134,9 +161,8 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
     final authProvider = Provider.of<AuthProvider>(context);
     
     if (authProvider.isInitializing) {
-      print('⏳ AuthProvider initializing...');
       return Scaffold(
-        backgroundColor: const Color(0xFF3498db),
+        backgroundColor: Theme.of(context).primaryColor,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
